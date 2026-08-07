@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" width="420" height="110">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="none"/>
+  
+  <g transform="translate(5, 5)">
+    <!-- Globe Blue Circle -->
+    <circle cx="50" cy="50" r="45" fill="#0088cc"/>
+    
+    <!-- Outer White Ring 1 -->
+    <ellipse cx="50" cy="50" rx="41" ry="18" fill="none" stroke="#ffffff" stroke-width="4.5" transform="rotate(-30, 50, 50)"/>
+    
+    <!-- Outer White Ring 2 -->
+    <ellipse cx="50" cy="50" rx="41" ry="18" fill="none" stroke="#ffffff" stroke-width="4.5" transform="rotate(35, 50, 50)"/>
+    
+    <!-- Openskools Text -->
+    <text x="110" y="62" font-family="Georgia, 'Times New Roman', serif" font-size="60" font-weight="normal" fill="#0088cc">Openskools</text>
+    
+    <!-- Academy Spaced Text -->
+    <text x="116" y="96" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="26" font-weight="normal" fill="#999999" letter-spacing="12">Academy</text>
+  </g>
+</svg>
