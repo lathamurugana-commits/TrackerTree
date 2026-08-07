@@ -1,18 +1,36 @@
 import { supabase } from '../supabaseClient';
 
+const fmtINR = (n) =>
+  `Rs. ${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
 /**
  * Sends a payment receipt email via the Supabase Edge Function
  * which uses Google SMTP (Gmail App Password) on the backend.
  *
- * @param {Object} tx     - Transaction record
- * @param {string} pdfUrl - Publicly accessible URL of the PDF receipt
+ * @param {Object} tx          - Transaction record
+ * @param {string} pdfUrl      - Publicly accessible URL of the PDF receipt
+ * @param {Object|null} ledger - Optional student ledger for split payment details
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-export const sendReceiptByEmail = async (tx, pdfUrl) => {
+export const sendReceiptByEmail = async (tx, pdfUrl, ledger = null) => {
   const receiptNo = tx.receipt_no || `REC-${(tx.id || '').replace('tx-', '')}`;
   const amount    = Number(tx.amount || 0).toLocaleString('en-IN', {
     minimumFractionDigits: 2
   });
+
+  const isSplit = ledger && ledger.studentTxs && ledger.studentTxs.length > 1;
+
+  // Build a clean installment list for the email template
+  const installments = isSplit
+    ? ledger.studentTxs.map((t, i) => ({
+        index:        i + 1,
+        date:         t.date,
+        receipt_no:   t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+        payment_mode: t.payment_mode || 'N/A',
+        amount:       fmtINR(t.amount),
+        is_current:   t.id === tx.id
+      }))
+    : [];
 
   try {
     const { data, error } = await supabase.functions.invoke('send-receipt-email', {
@@ -28,6 +46,12 @@ export const sendReceiptByEmail = async (tx, pdfUrl) => {
         date:           tx.date          || 'N/A',
         transaction_id: tx.transaction_id || 'N/A',
         pdf_url:        pdfUrl,
+        // Split payment summary fields
+        is_split:       isSplit,
+        total_fee:      isSplit ? fmtINR(ledger.totalFee)   : null,
+        total_paid:     isSplit ? fmtINR(ledger.totalPaid)  : null,
+        balance_due:    isSplit ? fmtINR(ledger.balanceDue) : null,
+        installments:   installments,
       }
     });
 

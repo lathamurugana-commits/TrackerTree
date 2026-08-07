@@ -25,6 +25,12 @@ serve(async (req: Request) => {
       date,
       transaction_id,
       pdf_url,
+      // Split payment fields
+      is_split,
+      total_fee,
+      total_paid,
+      balance_due,
+      installments,
     } = await req.json();
 
     // Validate required fields
@@ -45,7 +51,83 @@ serve(async (req: Request) => {
       );
     }
 
-    // Build HTML email body — no trailing spaces to avoid quoted-printable =20 encoding
+    // ── Build installment history rows ────────────────────────────────
+    const installmentRows = (is_split && Array.isArray(installments) && installments.length > 0)
+      ? installments.map((inst: { index: number; date: string; receipt_no: string; payment_mode: string; amount: string; is_current?: boolean }) => {
+          const bg = inst.is_current ? '#eff6ff' : (inst.index % 2 === 0 ? '#ffffff' : '#f8fafc');
+          const badge = inst.is_current
+            ? `<span style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px;">This Receipt</span>`
+            : '';
+          return [
+            `<tr style="background:${bg};">`,
+            `<td style="padding:8px 12px;color:#64748b;font-size:12px;">${inst.index}</td>`,
+            `<td style="padding:8px 12px;color:#0f172a;font-size:12px;">${inst.date}</td>`,
+            `<td style="padding:8px 12px;color:#0f172a;font-size:12px;font-family:monospace;">${inst.receipt_no}${badge}</td>`,
+            `<td style="padding:8px 12px;color:#0f172a;font-size:12px;">${inst.payment_mode}</td>`,
+            `<td style="padding:8px 12px;color:#16a34a;font-size:12px;font-weight:700;text-align:right;">${inst.amount}</td>`,
+            `</tr>`,
+          ].join('');
+        }).join('\n')
+      : '';
+
+    // ── Split payment summary block ───────────────────────────────────
+    const splitSummaryBlock = (is_split && total_fee && total_paid) ? [
+      '<tr>',
+      '<td style="padding:0 36px 8px;">',
+      '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;font-size:13px;">',
+
+      '<tr style="background:#f8fafc;">',
+      '<td style="padding:10px 16px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Total Course Fee</td>',
+      `<td style="padding:10px 16px;color:#0f172a;border-bottom:1px solid #e2e8f0;font-weight:600;">${total_fee}</td>`,
+      '</tr>',
+
+      '<tr>',
+      '<td style="padding:10px 16px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Total Paid So Far</td>',
+      `<td style="padding:10px 16px;color:#16a34a;border-bottom:1px solid #e2e8f0;font-weight:700;">${total_paid}</td>`,
+      '</tr>',
+
+      `<tr style="background:${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? '#fff7ed' : '#f0fdf4'};">`,
+      `<td style="padding:10px 16px;font-weight:700;color:${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? '#c2410c' : '#166534'};">`,
+      `${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? 'Balance Due' : 'Balance (Cleared)'}`,
+      '</td>',
+      `<td style="padding:10px 16px;font-weight:700;color:${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? '#ea580c' : '#16a34a'};">`,
+      `${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? balance_due : 'Rs. 0.00 ✓'}`,
+      '</td>',
+      '</tr>',
+
+      '</table>',
+      '</td></tr>',
+    ].join('\n') : '';
+
+    // ── Installment history table block ──────────────────────────────
+    const installmentBlock = (is_split && installmentRows) ? [
+      '<tr>',
+      '<td style="padding:0 36px 24px;">',
+      '<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#0f172a;">Installment Breakdown</p>',
+      '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;font-size:12px;">',
+
+      // Header row
+      '<tr style="background:#0077b6;">',
+      '<th style="padding:9px 12px;color:#ffffff;font-size:11px;text-align:left;font-weight:600;">#</th>',
+      '<th style="padding:9px 12px;color:#ffffff;font-size:11px;text-align:left;font-weight:600;">Date</th>',
+      '<th style="padding:9px 12px;color:#ffffff;font-size:11px;text-align:left;font-weight:600;">Receipt No</th>',
+      '<th style="padding:9px 12px;color:#ffffff;font-size:11px;text-align:left;font-weight:600;">Mode</th>',
+      '<th style="padding:9px 12px;color:#ffffff;font-size:11px;text-align:right;font-weight:600;">Amount</th>',
+      '</tr>',
+
+      installmentRows,
+
+      // Total row
+      '<tr style="background:#eff6ff;border-top:2px solid #bfdbfe;">',
+      '<td colspan="4" style="padding:9px 12px;font-weight:700;color:#1d4ed8;font-size:12px;">Total Paid</td>',
+      `<td style="padding:9px 12px;font-weight:700;color:#1d4ed8;font-size:12px;text-align:right;">${total_paid}</td>`,
+      '</tr>',
+
+      '</table>',
+      '</td></tr>',
+    ].join('\n') : '';
+
+    // ── Build HTML email body ─────────────────────────────────────────
     const htmlBody = [
       '<!DOCTYPE html>',
       '<html lang="en">',
@@ -64,14 +146,15 @@ serve(async (req: Request) => {
 
       // Receipt Title
       '<tr>',
-      '<td style="padding:32px 36px 0;">',
+      '<td style="padding:32px 36px 16px;">',
       '<h2 style="margin:0;font-size:20px;color:#0f172a;">Payment Receipt</h2>',
       `<p style="margin:8px 0 0;color:#64748b;font-size:14px;">Dear <strong>${to_name || student_name || "Student"}</strong>, your payment has been received successfully.</p>`,
+      is_split ? '<p style="margin:6px 0 0;display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;">⚡ Split / Installment Payment</p>' : '',
       '</td></tr>',
 
-      // Details Table
+      // Receipt Details Table
       '<tr>',
-      '<td style="padding:24px 36px;">',
+      '<td style="padding:0 36px 16px;">',
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;font-size:13px;">',
 
       '<tr style="background:#f8fafc;">',
@@ -112,12 +195,18 @@ serve(async (req: Request) => {
       ] : []),
 
       '<tr style="background:#ecfdf5;">',
-      '<td style="padding:14px 16px;font-weight:700;color:#166534;font-size:15px;">Amount Paid</td>',
+      '<td style="padding:14px 16px;font-weight:700;color:#166534;font-size:15px;">Amount Paid (This Receipt)</td>',
       `<td style="padding:14px 16px;font-weight:700;color:#16a34a;font-size:17px;">${amount}</td>`,
       '</tr>',
 
       '</table>',
       '</td></tr>',
+
+      // Split Payment Summary (if applicable)
+      splitSummaryBlock,
+
+      // Installment Breakdown Table (if applicable)
+      installmentBlock,
 
       // Download Button
       '<tr>',

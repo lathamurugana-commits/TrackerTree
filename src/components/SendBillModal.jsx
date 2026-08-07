@@ -71,7 +71,7 @@ const SendBillModal = ({ tx, ledger, onClose }) => {
     }
     setEmailStatus('sending');
     setEmailError('');
-    const result = await sendReceiptByEmail(tx, pdfUrl);
+    const result = await sendReceiptByEmail(tx, pdfUrl, isSplit ? ledger : null);
     if (result.success) {
       setEmailStatus('sent');
     } else {
@@ -91,10 +91,20 @@ const SendBillModal = ({ tx, ledger, onClose }) => {
     if (rawNum.length === 10 && !rawNum.startsWith('91')) rawNum = '91' + rawNum;
 
     const paymentSection = isSplit
-      ? `*Payment Summary*
-| Total Course Fee : Rs. ${fmtINR(totalFee)}
-| Total Paid       : Rs. ${fmtINR(totalPaid)}
-| Balance Due      : Rs. ${fmtINR(balanceDue)}`
+      ? (() => {
+          const lines = [
+            `*Payment Summary*`,
+            `| Total Course Fee : Rs. ${fmtINR(totalFee)}`,
+            `| Total Paid       : Rs. ${fmtINR(totalPaid)}`,
+            `| Balance Due      : Rs. ${fmtINR(balanceDue)}`,
+            ``,
+            `*Installment Breakdown*`,
+            ...ledger.studentTxs.map((t, i) =>
+              `| ${i + 1}. ${t.date}  Rs. ${fmtINR(t.amount)}  (${t.payment_mode})  ${t.receipt_no || `REC-${(t.id||'').replace('tx-','')}`}`
+            )
+          ];
+          return lines.join('\n');
+        })()
       : `| *Amount Paid  : Rs. ${amount}*`;
 
     const message = encodeURIComponent(
