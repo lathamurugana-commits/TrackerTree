@@ -227,8 +227,9 @@ const getLogoJpegDataUrl = () => loadImage('/logo.png');
 /**
  * Generates an exact-match professional PDF bill receipt
  * @param {Object} tx - The transaction object
+ * @param {Object|null} splitInfo - Optional split payment info { totalFee, totalPaid, balanceDue, installments }
  */
-export const generateBillReceipt = async (tx) => {
+export const generateBillReceipt = async (tx, splitInfo = null) => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -398,34 +399,61 @@ export const generateBillReceipt = async (tx) => {
     doc.text(`Remarks: ${tx.notes}`, 17, summaryY + 8);
   }
 
-  // Summary Table on Right (Total Fees, Tax, Grand Total)
+  // Summary Table on Right
   const sumColX = 135;
   const sumValX = 195;
   const sumRowH = 7;
 
-  // Draw summary block grid
-  // Total Fees Row
-  doc.line(sumColX, summaryY + sumRowH, sumValX, summaryY + sumRowH);
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text('Total Fees', sumColX + 3, summaryY + 5);
-  doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + 5, { align: 'right' });
+  const fmtAmt = (n) => `Rs. ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Tax Row
-  doc.line(sumColX, summaryY + (sumRowH * 2), sumValX, summaryY + (sumRowH * 2));
-  doc.text('Tax (0%)', sumColX + 3, summaryY + sumRowH + 5);
-  doc.text('Rs. 0.00', sumValX - 3, summaryY + sumRowH + 5, { align: 'right' });
+  if (splitInfo) {
+    // --- Split payment summary: Total Fee / Total Paid / Balance Due ---
+    // Row 1: Amount This Payment
+    doc.line(sumColX, summaryY + sumRowH, sumValX, summaryY + sumRowH);
+    doc.setFont('Helvetica', 'normal'); doc.setFontSize(8.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Amount This Payment', sumColX + 3, summaryY + 5);
+    doc.text(fmtAmt(tx.amount), sumValX - 3, summaryY + 5, { align: 'right' });
 
-  // Grand Total Row
-  doc.setFillColor(248, 250, 252);
-  doc.rect(sumColX, summaryY + (sumRowH * 2), sumValX - sumColX, sumRowH, 'F');
-  doc.line(sumColX, summaryY + (sumRowH * 3), sumValX, summaryY + (sumRowH * 3));
-  doc.setFont('Helvetica', 'bold');
-  doc.text('Grand Total', sumColX + 3, summaryY + (sumRowH * 2) + 5);
-  doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + (sumRowH * 2) + 5, { align: 'right' });
+    // Row 2: Total Paid So Far
+    doc.line(sumColX, summaryY + (sumRowH * 2), sumValX, summaryY + (sumRowH * 2));
+    doc.text('Total Paid So Far', sumColX + 3, summaryY + sumRowH + 5);
+    doc.text(fmtAmt(splitInfo.totalPaid), sumValX - 3, summaryY + sumRowH + 5, { align: 'right' });
+
+    // Row 3: Balance Due (highlighted)
+    const balanceColor = splitInfo.balanceDue > 0 ? [220, 100, 30] : [22, 163, 74];
+    doc.setFillColor(splitInfo.balanceDue > 0 ? 255 : 240, splitInfo.balanceDue > 0 ? 247 : 253, splitInfo.balanceDue > 0 ? 237 : 244);
+    doc.rect(sumColX, summaryY + (sumRowH * 2), sumValX - sumColX, sumRowH, 'F');
+    doc.line(sumColX, summaryY + (sumRowH * 3), sumValX, summaryY + (sumRowH * 3));
+    doc.setFont('Helvetica', 'bold');
+    doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+    doc.text(splitInfo.balanceDue > 0 ? 'Balance Due' : 'Balance (Cleared)', sumColX + 3, summaryY + (sumRowH * 2) + 5);
+    doc.text(splitInfo.balanceDue > 0 ? fmtAmt(splitInfo.balanceDue) : 'Rs. 0.00', sumValX - 3, summaryY + (sumRowH * 2) + 5, { align: 'right' });
+  } else {
+    // --- Standard full-payment summary ---
+    doc.line(sumColX, summaryY + sumRowH, sumValX, summaryY + sumRowH);
+    doc.setFont('Helvetica', 'normal'); doc.setFontSize(8.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Total Fees', sumColX + 3, summaryY + 5);
+    doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + 5, { align: 'right' });
+
+    doc.line(sumColX, summaryY + (sumRowH * 2), sumValX, summaryY + (sumRowH * 2));
+    doc.text('Tax (0%)', sumColX + 3, summaryY + sumRowH + 5);
+    doc.text('Rs. 0.00', sumValX - 3, summaryY + sumRowH + 5, { align: 'right' });
+
+    doc.setFillColor(248, 250, 252);
+    doc.rect(sumColX, summaryY + (sumRowH * 2), sumValX - sumColX, sumRowH, 'F');
+    doc.line(sumColX, summaryY + (sumRowH * 3), sumValX, summaryY + (sumRowH * 3));
+    doc.setFont('Helvetica', 'bold');
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Grand Total', sumColX + 3, summaryY + (sumRowH * 2) + 5);
+    doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + (sumRowH * 2) + 5, { align: 'right' });
+  }
 
   // Summary Table Vertical Borders
+  doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+  doc.setDrawColor(gridBorder[0], gridBorder[1], gridBorder[2]);
+  doc.setLineWidth(0.2);
   doc.line(sumColX, summaryY, sumColX, summaryY + (sumRowH * 3));
   doc.line(colX[4], summaryY, colX[4], summaryY + (sumRowH * 3));
   doc.line(sumValX, summaryY, sumValX, summaryY + (sumRowH * 3));
@@ -441,9 +469,63 @@ export const generateBillReceipt = async (tx) => {
   );
 
   // ----------------------------------------------------
+  // 6b. PAYMENT HISTORY TABLE (split payments only)
+  // ----------------------------------------------------
+  let footerY = 245;
+  if (splitInfo && splitInfo.installments && splitInfo.installments.length > 1) {
+    const histY = summaryY + 38;
+    doc.setFont('Helvetica', 'bold'); doc.setFontSize(9);
+    doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.text('Payment History:', 15, histY);
+
+    // Mini table headers
+    const hdrY = histY + 4;
+    doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.rect(15, hdrY, 180, 6, 'F');
+    doc.setFont('Helvetica', 'bold'); doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('#', 18, hdrY + 4);
+    doc.text('Date', 28, hdrY + 4);
+    doc.text('Receipt No', 70, hdrY + 4);
+    doc.text('Mode', 125, hdrY + 4);
+    doc.text('Amount', 192, hdrY + 4, { align: 'right' });
+
+    // Rows
+    const rowH = 6;
+    splitInfo.installments.forEach((inst, idx) => {
+      const ry = hdrY + 6 + (idx * rowH);
+      if (idx % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, ry, 180, rowH, 'F');
+      }
+      doc.setFont('Helvetica', 'normal'); doc.setFontSize(7.5);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.text(`${idx + 1}`, 18, ry + 4);
+      doc.text(inst.date, 28, ry + 4);
+      doc.text(inst.receipt_no, 70, ry + 4);
+      doc.text(inst.payment_mode, 125, ry + 4);
+      doc.setFont('Helvetica', 'bold');
+      doc.text(fmtAmt(inst.amount), 192, ry + 4, { align: 'right' });
+      doc.setDrawColor(gridBorder[0], gridBorder[1], gridBorder[2]);
+      doc.setLineWidth(0.2);
+      doc.line(15, ry + rowH, 195, ry + rowH);
+    });
+
+    // Total row
+    const totalRowY = hdrY + 6 + (splitInfo.installments.length * rowH);
+    doc.setFillColor(238, 246, 250);
+    doc.rect(15, totalRowY, 180, rowH, 'F');
+    doc.setFont('Helvetica', 'bold'); doc.setFontSize(7.5);
+    doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.text('Total Paid', 125, totalRowY + 4);
+    doc.text(fmtAmt(splitInfo.totalPaid), 192, totalRowY + 4, { align: 'right' });
+
+    footerY = Math.max(245, totalRowY + rowH + 10);
+  }
+
+  // ----------------------------------------------------
   // 7. SIGNATURES & FOOTER
   // ----------------------------------------------------
-  const footerY = 245;
 
   // sign.png — placed above the signature line
   if (signObj && signObj.dataUrl) {
@@ -483,9 +565,10 @@ export const generateBillReceipt = async (tx) => {
  * Same as generateBillReceipt but returns { base64, filename } instead of downloading.
  * Used by the EmailJS send flow to attach the PDF to an outgoing email.
  * @param {Object} tx - The transaction object
+ * @param {Object|null} splitInfo - Optional split payment info { totalFee, totalPaid, balanceDue, installments }
  * @returns {Promise<{ base64: string, filename: string }>}
  */
-export const generateBillReceiptAsBase64 = async (tx) => {
+export const generateBillReceiptAsBase64 = async (tx, splitInfo = null) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const primaryBlue = [0, 138, 209];
@@ -602,23 +685,51 @@ export const generateBillReceiptAsBase64 = async (tx) => {
   }
 
   const sumColX = 135; const sumValX = 195; const sumRowH = 7;
-  doc.line(sumColX, summaryY + sumRowH, sumValX, summaryY + sumRowH);
-  doc.setFont('Helvetica', 'normal'); doc.setFontSize(8.5);
+  const fmtAmt = (n) => `Rs. ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  if (splitInfo) {
+    // Split payment summary
+    doc.line(sumColX, summaryY + sumRowH, sumValX, summaryY + sumRowH);
+    doc.setFont('Helvetica', 'normal'); doc.setFontSize(8.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Amount This Payment', sumColX + 3, summaryY + 5);
+    doc.text(fmtAmt(tx.amount), sumValX - 3, summaryY + 5, { align: 'right' });
+
+    doc.line(sumColX, summaryY + (sumRowH * 2), sumValX, summaryY + (sumRowH * 2));
+    doc.text('Total Paid So Far', sumColX + 3, summaryY + sumRowH + 5);
+    doc.text(fmtAmt(splitInfo.totalPaid), sumValX - 3, summaryY + sumRowH + 5, { align: 'right' });
+
+    const balanceColor = splitInfo.balanceDue > 0 ? [220, 100, 30] : [22, 163, 74];
+    doc.setFillColor(splitInfo.balanceDue > 0 ? 255 : 240, splitInfo.balanceDue > 0 ? 247 : 253, splitInfo.balanceDue > 0 ? 237 : 244);
+    doc.rect(sumColX, summaryY + (sumRowH * 2), sumValX - sumColX, sumRowH, 'F');
+    doc.line(sumColX, summaryY + (sumRowH * 3), sumValX, summaryY + (sumRowH * 3));
+    doc.setFont('Helvetica', 'bold');
+    doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+    doc.text(splitInfo.balanceDue > 0 ? 'Balance Due' : 'Balance (Cleared)', sumColX + 3, summaryY + (sumRowH * 2) + 5);
+    doc.text(splitInfo.balanceDue > 0 ? fmtAmt(splitInfo.balanceDue) : 'Rs. 0.00', sumValX - 3, summaryY + (sumRowH * 2) + 5, { align: 'right' });
+  } else {
+    doc.line(sumColX, summaryY + sumRowH, sumValX, summaryY + sumRowH);
+    doc.setFont('Helvetica', 'normal'); doc.setFontSize(8.5);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Total Fees', sumColX + 3, summaryY + 5);
+    doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + 5, { align: 'right' });
+
+    doc.line(sumColX, summaryY + (sumRowH * 2), sumValX, summaryY + (sumRowH * 2));
+    doc.text('Tax (0%)', sumColX + 3, summaryY + sumRowH + 5);
+    doc.text('Rs. 0.00', sumValX - 3, summaryY + sumRowH + 5, { align: 'right' });
+
+    doc.setFillColor(248, 250, 252);
+    doc.rect(sumColX, summaryY + (sumRowH * 2), sumValX - sumColX, sumRowH, 'F');
+    doc.line(sumColX, summaryY + (sumRowH * 3), sumValX, summaryY + (sumRowH * 3));
+    doc.setFont('Helvetica', 'bold');
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text('Grand Total', sumColX + 3, summaryY + (sumRowH * 2) + 5);
+    doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + (sumRowH * 2) + 5, { align: 'right' });
+  }
+
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text('Total Fees', sumColX + 3, summaryY + 5);
-  doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + 5, { align: 'right' });
-
-  doc.line(sumColX, summaryY + (sumRowH * 2), sumValX, summaryY + (sumRowH * 2));
-  doc.text('Tax (0%)', sumColX + 3, summaryY + sumRowH + 5);
-  doc.text('Rs. 0.00', sumValX - 3, summaryY + sumRowH + 5, { align: 'right' });
-
-  doc.setFillColor(248, 250, 252);
-  doc.rect(sumColX, summaryY + (sumRowH * 2), sumValX - sumColX, sumRowH, 'F');
-  doc.line(sumColX, summaryY + (sumRowH * 3), sumValX, summaryY + (sumRowH * 3));
-  doc.setFont('Helvetica', 'bold');
-  doc.text('Grand Total', sumColX + 3, summaryY + (sumRowH * 2) + 5);
-  doc.text(`Rs. ${formattedAmt}`, sumValX - 3, summaryY + (sumRowH * 2) + 5, { align: 'right' });
-
+  doc.setDrawColor(gridBorder[0], gridBorder[1], gridBorder[2]);
+  doc.setLineWidth(0.2);
   doc.line(sumColX, summaryY, sumColX, summaryY + (sumRowH * 3));
   doc.line(colX[4], summaryY, colX[4], summaryY + (sumRowH * 3));
   doc.line(sumValX, summaryY, sumValX, summaryY + (sumRowH * 3));
@@ -627,7 +738,49 @@ export const generateBillReceiptAsBase64 = async (tx) => {
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
   doc.text('Note: This receipt serves as proof of payment for the above-mentioned course. Please retain it for future reference.', 15, summaryY + 30);
 
-  const footerY = 245;
+  // Payment history table for split payments
+  let footerY = 245;
+  if (splitInfo && splitInfo.installments && splitInfo.installments.length > 1) {
+    const histY = summaryY + 38;
+    doc.setFont('Helvetica', 'bold'); doc.setFontSize(9);
+    doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.text('Payment History:', 15, histY);
+
+    const hdrY = histY + 4;
+    doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.rect(15, hdrY, 180, 6, 'F');
+    doc.setFont('Helvetica', 'bold'); doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('#', 18, hdrY + 4);
+    doc.text('Date', 28, hdrY + 4);
+    doc.text('Receipt No', 70, hdrY + 4);
+    doc.text('Mode', 125, hdrY + 4);
+    doc.text('Amount', 192, hdrY + 4, { align: 'right' });
+
+    const rowH = 6;
+    splitInfo.installments.forEach((inst, idx) => {
+      const ry = hdrY + 6 + (idx * rowH);
+      if (idx % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(15, ry, 180, rowH, 'F'); }
+      doc.setFont('Helvetica', 'normal'); doc.setFontSize(7.5);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.text(`${idx + 1}`, 18, ry + 4);
+      doc.text(inst.date, 28, ry + 4);
+      doc.text(inst.receipt_no, 70, ry + 4);
+      doc.text(inst.payment_mode, 125, ry + 4);
+      doc.setFont('Helvetica', 'bold');
+      doc.text(fmtAmt(inst.amount), 192, ry + 4, { align: 'right' });
+      doc.setDrawColor(gridBorder[0], gridBorder[1], gridBorder[2]); doc.setLineWidth(0.2);
+      doc.line(15, ry + rowH, 195, ry + rowH);
+    });
+
+    const totalRowY = hdrY + 6 + (splitInfo.installments.length * rowH);
+    doc.setFillColor(238, 246, 250); doc.rect(15, totalRowY, 180, rowH, 'F');
+    doc.setFont('Helvetica', 'bold'); doc.setFontSize(7.5);
+    doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+    doc.text('Total Paid', 125, totalRowY + 4);
+    doc.text(fmtAmt(splitInfo.totalPaid), 192, totalRowY + 4, { align: 'right' });
+    footerY = Math.max(245, totalRowY + rowH + 10);
+  }
   if (signObj && signObj.dataUrl) {
     const signW = 40; const signAR = signObj.height / signObj.width;
     const signH = Math.min(signW * signAR, 14);

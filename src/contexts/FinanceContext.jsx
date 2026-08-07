@@ -92,7 +92,9 @@ export const FinanceProvider = ({ children }) => {
           id: `tx-${Date.now()}`,
           created_at: new Date().toISOString(),
           created_by: user.id,
-          [trackingField]: trackingId
+          [trackingField]: trackingId,
+          total_fee: parseFloat(txData.total_fee || txData.amount || 0),
+          balance_due: parseFloat(txData.balance_due || 0)
         };
         const updated = [...transactions, newTx];
         saveLocalTransactions(updated);
@@ -114,6 +116,8 @@ export const FinanceProvider = ({ children }) => {
           email: txData.type === 'income' ? (txData.email || null) : null,
           vendor: txData.type === 'expense' ? txData.vendor : null,
           bill_upload_url: txData.type === 'expense' ? txData.bill_upload_url : null,
+          total_fee: txData.type === 'income' ? parseFloat(txData.total_fee || txData.amount || 0) : null,
+          balance_due: txData.type === 'income' ? parseFloat(txData.balance_due || 0) : null,
           created_by: user.id,
           [trackingField]: trackingId
         };
@@ -166,6 +170,8 @@ export const FinanceProvider = ({ children }) => {
           email: txData.type === 'income' ? (txData.email || null) : null,
           vendor: txData.type === 'expense' ? txData.vendor : null,
           bill_upload_url: txData.type === 'expense' ? txData.bill_upload_url : null,
+          total_fee: txData.type === 'income' ? parseFloat(txData.total_fee || txData.amount || 0) : null,
+          balance_due: txData.type === 'income' ? parseFloat(txData.balance_due || 0) : null,
         };
 
         const { data, error } = await supabase
@@ -297,6 +303,25 @@ export const FinanceProvider = ({ children }) => {
     return data.secure_url;
   };
 
+  // Returns all income transactions for a given student+course with computed totals
+  const getStudentLedger = (studentName, course) => {
+    const studentTxs = transactions
+      .filter(t =>
+        t.type === 'income' &&
+        (t.student_name || '').toLowerCase() === (studentName || '').toLowerCase() &&
+        (t.course || '').toLowerCase() === (course || '').toLowerCase()
+      )
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const totalFee = studentTxs.length > 0
+      ? Math.max(...studentTxs.map(t => parseFloat(t.total_fee || t.amount || 0)))
+      : 0;
+    const totalPaid = studentTxs.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const balanceDue = Math.max(0, totalFee - totalPaid);
+
+    return { studentTxs, totalFee, totalPaid, balanceDue };
+  };
+
   return (
     <FinanceContext.Provider value={{
       transactions,
@@ -306,7 +331,8 @@ export const FinanceProvider = ({ children }) => {
       updateTransaction,
       deleteTransaction,
       uploadBill,
-      uploadReceiptPdf
+      uploadReceiptPdf,
+      getStudentLedger
     }}>
       {children}
     </FinanceContext.Provider>

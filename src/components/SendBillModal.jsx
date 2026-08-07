@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   X, Mail, MessageCircle, Loader2, CheckCircle2,
-  AlertCircle, Download, Share2, ExternalLink
+  AlertCircle, Download, Share2, ExternalLink, History, IndianRupee
 } from 'lucide-react';
 import { generateBillReceiptAsBase64, generateBillReceipt } from '../utils/exportUtils';
 import { sendReceiptByEmail } from '../utils/emailService';
@@ -16,7 +16,7 @@ import { useFinance } from '../contexts/FinanceContext';
  *  4. WhatsApp: open wa.me with message + download link
  *  5. Download: save the PDF directly
  */
-const SendBillModal = ({ tx, onClose }) => {
+const SendBillModal = ({ tx, ledger, onClose }) => {
   const { uploadReceiptPdf } = useFinance();
 
   const [phase, setPhase]               = useState('idle');   // idle | uploading | ready | error
@@ -29,12 +29,30 @@ const SendBillModal = ({ tx, onClose }) => {
   const receiptNo = tx.receipt_no || `REC-${(tx.id || '').replace('tx-', '')}`;
   const amount    = Number(tx.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
+  // Determine if this is a split-payment scenario
+  const isSplit = ledger && ledger.studentTxs && ledger.studentTxs.length > 1;
+  const totalFee   = ledger ? ledger.totalFee : Number(tx.amount || 0);
+  const totalPaid  = ledger ? ledger.totalPaid : Number(tx.amount || 0);
+  const balanceDue = ledger ? ledger.balanceDue : 0;
+  const fmtINR = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
   // ── Step 1: Generate PDF → upload → get URL ──────────────────────
   const handlePrepare = async () => {
     setPhase('uploading');
     setGlobalError('');
     try {
-      const { base64, filename } = await generateBillReceiptAsBase64(tx);
+      const splitInfo = isSplit ? {
+        totalFee,
+        totalPaid,
+        balanceDue,
+        installments: ledger.studentTxs.map(t => ({
+          receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+          date: t.date,
+          amount: Number(t.amount || 0),
+          payment_mode: t.payment_mode || 'N/A'
+        }))
+      } : null;
+      const { base64, filename } = await generateBillReceiptAsBase64(tx, splitInfo);
       const url = await uploadReceiptPdf(base64, filename);
       setPdfUrl(url);
       setPhase('ready');
@@ -68,12 +86,17 @@ const SendBillModal = ({ tx, onClose }) => {
       setGlobalError('No WhatsApp number saved for this student.');
       return;
     }
-    // Strip all formatting characters
     let rawNum = tx.whatsapp.replace(/[\s\-().]/g, '');
-    // If number starts with +, remove the + (wa.me doesn't need it)
     if (rawNum.startsWith('+')) rawNum = rawNum.slice(1);
-    // If it's a 10-digit Indian number with no country code, prepend 91
     if (rawNum.length === 10 && !rawNum.startsWith('91')) rawNum = '91' + rawNum;
+
+    const paymentSection = isSplit
+      ? `*Payment Summary*
+| Total Course Fee : Rs. ${fmtINR(totalFee)}
+| Total Paid       : Rs. ${fmtINR(totalPaid)}
+| Balance Due      : Rs. ${fmtINR(balanceDue)}`
+      : `| *Amount Paid  : Rs. ${amount}*`;
+
     const message = encodeURIComponent(
 `*OpenSkools - Payment Receipt*
 
@@ -87,6 +110,8 @@ Dear *${tx.student_name || 'Student'}*, your payment has been received!
 | Payment Mode : ${tx.payment_mode || 'N/A'}
 | *Amount Paid  : Rs. ${amount}*
 ${tx.transaction_id ? `| Txn ID       : ${tx.transaction_id}` : ''}
+
+${paymentSection}
 
 *Download Your Receipt PDF:*
 ${pdfUrl}
@@ -153,7 +178,7 @@ _OpenSkools Finance Team_`
               <p className="font-bold text-slate-800 dark:text-white truncate">{tx.student_name || '—'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Amount</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Amount This Receipt</p>
               <p className="font-bold text-emerald-600">Rs. {amount}</p>
             </div>
             <div>
@@ -165,7 +190,64 @@ _OpenSkools Finance Team_`
               <p className="text-slate-600 dark:text-slate-300">{tx.date}</p>
             </div>
           </div>
+
+          {/* ── Split Payment Summary ── */}
+          {isSplit && (
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                  <p className="text-[9px] font-semibold uppercase text-slate-400">Total Fee</p>
+                  <p className="text-xs font-bold text-slate-700 dark:text-white">Rs. {fmtINR(totalFee)}</p>
+                </div>
+                <div className="rounded-lg bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 px-2 py-1.5">
+                  <p className="text-[9px] font-semibold uppercase text-emerald-500">Paid</p>
+                  <p className="text-xs font-bold text-emerald-600">Rs. {fmtINR(totalPaid)}</p>
+                </div>
+                <div className={`rounded-lg border px-2 py-1.5 ${
+                  balanceDue > 0
+                    ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'
+                    : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
+                }`}>
+                  <p className={`text-[9px] font-semibold uppercase ${ balanceDue > 0 ? 'text-orange-500' : 'text-emerald-500'}`}>Balance</p>
+                  <p className={`text-xs font-bold ${ balanceDue > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                    {balanceDue > 0 ? `Rs. ${fmtINR(balanceDue)}` : '✓ Cleared'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* ── Payment History (Split only) ── */}
+        {isSplit && (
+          <div className="mx-6 mt-3">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-2">
+              <History className="h-3 w-3" /> Payment History ({ledger.studentTxs.length} installments)
+            </p>
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+              {ledger.studentTxs.map((t, i) => (
+                <div
+                  key={t.id}
+                  className={`flex items-center justify-between px-3 py-2 text-xs ${
+                    t.id === tx.id ? 'bg-blue-50 dark:bg-blue-950/20' : (i % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950')
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-[9px] font-bold text-slate-600 dark:text-slate-300">{i + 1}</span>
+                    <div>
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">{t.date}</p>
+                      <p className="text-[10px] text-slate-400">{t.payment_mode} {t.receipt_no || `REC-${(t.id||'').replace('tx-','')}`}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-emerald-600">Rs. {fmtINR(t.amount)}</p>
+                    {t.id === tx.id && <p className="text-[9px] text-blue-500 font-semibold">← This receipt</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Global Error Banner ── */}
         {globalError && (

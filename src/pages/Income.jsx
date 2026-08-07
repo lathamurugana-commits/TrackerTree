@@ -5,12 +5,12 @@ import { useCategories } from '../contexts/CategoryContext';
 import { PAYMENT_MODES } from '../utils/mockData';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import Modal from '../components/Modal';
-import { Search, Plus, Edit2, Trash2, Calendar, FileText, ChevronLeft, ChevronRight, User, GraduationCap, DollarSign, CreditCard, Download, Phone, Mail, Share2 } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Calendar, FileText, ChevronLeft, ChevronRight, User, GraduationCap, DollarSign, CreditCard, Download, Phone, Mail, Share2, AlertCircle, Layers } from 'lucide-react';
 import { generateBillReceipt } from '../utils/exportUtils';
 import SendBillModal from '../components/SendBillModal';
 
 const Income = () => {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useFinance();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction, getStudentLedger } = useFinance();
   const { role } = useAuth();
   const { incomeCategories } = useCategories();
   
@@ -39,7 +39,9 @@ const Income = () => {
     transaction_id: '',
     whatsapp: '',
     email: '',
-    notes: ''
+    notes: '',
+    total_fee: '',
+    payment_type: 'full'  // 'full' | 'split'
   });
   const [formError, setFormError] = useState('');
 
@@ -81,7 +83,9 @@ const Income = () => {
       transaction_id: '',
       whatsapp: '',
       email: '',
-      notes: ''
+      notes: '',
+      total_fee: '',
+      payment_type: 'full'
     });
     setFormError('');
   };
@@ -93,6 +97,7 @@ const Income = () => {
 
   const handleOpenEditModal = (tx) => {
     setCurrentTx(tx);
+    const isSplit = tx.total_fee && parseFloat(tx.total_fee) > parseFloat(tx.amount);
     setFormData({
       date: tx.date,
       student_name: tx.student_name || '',
@@ -103,7 +108,9 @@ const Income = () => {
       transaction_id: tx.transaction_id || '',
       whatsapp: tx.whatsapp || '',
       email: tx.email || '',
-      notes: tx.notes || ''
+      notes: tx.notes || '',
+      total_fee: tx.total_fee ? tx.total_fee.toString() : '',
+      payment_type: isSplit ? 'split' : 'full'
     });
     setFormError('');
     setIsEditModalOpen(true);
@@ -124,11 +131,30 @@ const Income = () => {
       setFormError('Amount must be greater than zero.');
       return;
     }
+    if (formData.payment_type === 'split') {
+      if (!formData.total_fee || parseFloat(formData.total_fee) <= 0) {
+        setFormError('Please enter the Total Course Fee for split payment.');
+        return;
+      }
+      if (parseFloat(formData.amount) > parseFloat(formData.total_fee)) {
+        setFormError('Amount Paid cannot exceed Total Course Fee.');
+        return;
+      }
+    }
+
+    const totalFee = formData.payment_type === 'split'
+      ? parseFloat(formData.total_fee)
+      : parseFloat(formData.amount);
+    const balanceDue = formData.payment_type === 'split'
+      ? Math.max(0, totalFee - parseFloat(formData.amount))
+      : 0;
 
     const payload = {
       type: 'income',
       ...formData,
-      amount: parseFloat(formData.amount)
+      amount: parseFloat(formData.amount),
+      total_fee: totalFee,
+      balance_due: balanceDue
     };
 
     const res = await addTransaction(payload);
@@ -150,11 +176,30 @@ const Income = () => {
       setFormError('Amount must be greater than zero.');
       return;
     }
+    if (formData.payment_type === 'split') {
+      if (!formData.total_fee || parseFloat(formData.total_fee) <= 0) {
+        setFormError('Please enter the Total Course Fee for split payment.');
+        return;
+      }
+      if (parseFloat(formData.amount) > parseFloat(formData.total_fee)) {
+        setFormError('Amount Paid cannot exceed Total Course Fee.');
+        return;
+      }
+    }
+
+    const totalFee = formData.payment_type === 'split'
+      ? parseFloat(formData.total_fee)
+      : parseFloat(formData.amount);
+    const balanceDue = formData.payment_type === 'split'
+      ? Math.max(0, totalFee - parseFloat(formData.amount))
+      : 0;
 
     const payload = {
       type: 'income',
       ...formData,
-      amount: parseFloat(formData.amount)
+      amount: parseFloat(formData.amount),
+      total_fee: totalFee,
+      balance_due: balanceDue
     };
 
     const res = await updateTransaction(currentTx.id, payload);
@@ -164,6 +209,28 @@ const Income = () => {
     } else {
       setFormError(res.error);
     }
+  };
+
+  // Quick-add next installment for a student with outstanding balance
+  const handleOpenInstallmentModal = (tx) => {
+    const ledger = getStudentLedger(tx.student_name, tx.course);
+    const remainingBalance = ledger.balanceDue;
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      student_name: tx.student_name || '',
+      course: tx.course || '',
+      category: tx.category || 'Student Fee',
+      amount: '',
+      payment_mode: tx.payment_mode || 'Bank Transfer',
+      transaction_id: '',
+      whatsapp: tx.whatsapp || '',
+      email: tx.email || '',
+      notes: '',
+      total_fee: ledger.totalFee.toString(),
+      payment_type: 'split'
+    });
+    setFormError('');
+    setIsAddModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -311,7 +378,27 @@ const Income = () => {
 
                     {/* Amount */}
                     <td className="px-6 py-4 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                      {formatCurrency(tx.amount)}
+                      <div>{formatCurrency(tx.amount)}</div>
+                      {/* Balance due badge */}
+                      {(() => {
+                        const ledger = getStudentLedger(tx.student_name, tx.course);
+                        if (ledger.balanceDue > 0) {
+                          return (
+                            <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-orange-50 border border-orange-200 px-2 py-0.5 text-[10px] font-semibold text-orange-600 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-400">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                              Due: {formatCurrency(ledger.balanceDue)}
+                            </span>
+                          );
+                        }
+                        if (tx.total_fee && parseFloat(tx.total_fee) > parseFloat(tx.amount || 0)) {
+                          return (
+                            <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400">
+                              ✓ Fully Paid
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </td>
 
                     {/* Actions */}
@@ -331,6 +418,22 @@ const Income = () => {
                         >
                           <Share2 className="h-4 w-4" />
                         </button>
+                        {/* Installment button — only shown when balance is due */}
+                        {(() => {
+                          const ledger = getStudentLedger(tx.student_name, tx.course);
+                          if (ledger.balanceDue > 0) {
+                            return (
+                              <button
+                                onClick={() => handleOpenInstallmentModal(tx)}
+                                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-orange-600 dark:hover:bg-slate-800"
+                                title={`Record next installment (Balance: ${formatCurrency(ledger.balanceDue)})`}
+                              >
+                                <Layers className="h-4 w-4" />
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
                         <button
                           onClick={() => handleOpenEditModal(tx)}
                           className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
@@ -560,6 +663,60 @@ const Income = () => {
             </div>
           </div>
 
+          {/* Payment Type Toggle + Total Fee */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Payment Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, payment_type: 'full', total_fee: prev.amount }))}
+                  className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-all ${
+                    formData.payment_type === 'full'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-700 dark:text-emerald-400'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'
+                  }`}
+                >
+                  ✓ Full Payment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, payment_type: 'split' }))}
+                  className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-all ${
+                    formData.payment_type === 'split'
+                      ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:border-orange-700 dark:text-orange-400'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'
+                  }`}
+                >
+                  ⚡ Split / Installment
+                </button>
+              </div>
+            </div>
+            {formData.payment_type === 'split' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Total Course Fee (INR)</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-orange-400" />
+                  <input
+                    type="number"
+                    name="total_fee"
+                    value={formData.total_fee}
+                    onChange={handleFormChange}
+                    placeholder="e.g. 50000"
+                    step="any"
+                    min="0.01"
+                    className="w-full rounded-lg border border-orange-200 bg-orange-50/30 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-orange-400 dark:border-orange-800 dark:bg-orange-950/10 dark:text-slate-200"
+                  />
+                </div>
+                {formData.total_fee && formData.amount && parseFloat(formData.total_fee) >= parseFloat(formData.amount) && (
+                  <p className="mt-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                    Balance after this payment: {formatCurrency(Math.max(0, parseFloat(formData.total_fee) - parseFloat(formData.amount)))}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end space-x-2 pt-2">
             <button
               type="button"
@@ -749,6 +906,60 @@ const Income = () => {
             </div>
           </div>
 
+          {/* Payment Type Toggle + Total Fee (Edit) */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Payment Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, payment_type: 'full', total_fee: prev.amount }))}
+                  className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-all ${
+                    formData.payment_type === 'full'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-700 dark:text-emerald-400'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'
+                  }`}
+                >
+                  ✓ Full Payment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, payment_type: 'split' }))}
+                  className={`flex-1 rounded-lg border py-2 text-xs font-semibold transition-all ${
+                    formData.payment_type === 'split'
+                      ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:border-orange-700 dark:text-orange-400'
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'
+                  }`}
+                >
+                  ⚡ Split / Installment
+                </button>
+              </div>
+            </div>
+            {formData.payment_type === 'split' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Total Course Fee (INR)</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-orange-400" />
+                  <input
+                    type="number"
+                    name="total_fee"
+                    value={formData.total_fee}
+                    onChange={handleFormChange}
+                    placeholder="e.g. 50000"
+                    step="any"
+                    min="0.01"
+                    className="w-full rounded-lg border border-orange-200 bg-orange-50/30 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-orange-400 dark:border-orange-800 dark:bg-orange-950/10 dark:text-slate-200"
+                  />
+                </div>
+                {formData.total_fee && formData.amount && parseFloat(formData.total_fee) >= parseFloat(formData.amount) && (
+                  <p className="mt-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                    Balance after this payment: {formatCurrency(Math.max(0, parseFloat(formData.total_fee) - parseFloat(formData.amount)))}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end space-x-2 pt-2">
             <button
               type="button"
@@ -771,6 +982,7 @@ const Income = () => {
       {sendBillTx && (
         <SendBillModal
           tx={sendBillTx}
+          ledger={getStudentLedger(sendBillTx.student_name, sendBillTx.course)}
           onClose={() => setSendBillTx(null)}
         />
       )}
