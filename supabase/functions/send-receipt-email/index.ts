@@ -25,11 +25,16 @@ serve(async (req: Request) => {
       date,
       transaction_id,
       pdf_url,
-      // Split payment fields
+      // Balance summary fields
       is_split,
       total_fee,
       total_paid,
       balance_due,
+      // Raw numeric values — used for reliable conditional logic (no string parsing)
+      balance_due_num,
+      total_fee_num,
+      total_paid_num,
+      balance_cleared,
       installments,
     } = await req.json();
 
@@ -70,10 +75,14 @@ serve(async (req: Request) => {
         }).join('\n')
       : '';
 
-    // ── Split payment summary block ───────────────────────────────────
-    const splitSummaryBlock = (is_split && total_fee && total_paid) ? [
+    // ── Balance summary block (always shown when fee info available) ──────
+    // Use raw numeric value directly — avoids NaN bug from regex parsing 'Rs. 5,000.00'
+    const balanceDueNum = Number(balance_due_num ?? 0);
+    const balanceIsPending = balanceDueNum > 0;
+    const balanceSummaryBlock = (total_fee && total_paid) ? [
       '<tr>',
       '<td style="padding:0 36px 8px;">',
+      '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#0f172a;">Payment Summary</p>',
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;font-size:13px;">',
 
       '<tr style="background:#f8fafc;">',
@@ -86,12 +95,12 @@ serve(async (req: Request) => {
       `<td style="padding:10px 16px;color:#16a34a;border-bottom:1px solid #e2e8f0;font-weight:700;">${total_paid}</td>`,
       '</tr>',
 
-      `<tr style="background:${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? '#fff7ed' : '#f0fdf4'};">`,
-      `<td style="padding:10px 16px;font-weight:700;color:${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? '#c2410c' : '#166534'};">`,
-      `${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? 'Balance Due' : 'Balance (Cleared)'}`,
+      `<tr style="background:${balanceIsPending ? '#fff7ed' : '#f0fdf4'};">`,
+      `<td style="padding:10px 16px;font-weight:700;color:${balanceIsPending ? '#c2410c' : '#166534'};border-bottom:1px solid #e2e8f0;">`,
+      `${balanceIsPending ? 'Balance Due' : 'Balance (Cleared)'}`,
       '</td>',
-      `<td style="padding:10px 16px;font-weight:700;color:${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? '#ea580c' : '#16a34a'};">`,
-      `${Number((balance_due || '').replace(/[^0-9.]/g, '')) > 0 ? balance_due : 'Rs. 0.00 ✓'}`,
+      `<td style="padding:10px 16px;font-weight:700;color:${balanceIsPending ? '#ea580c' : '#16a34a'};border-bottom:1px solid #e2e8f0;">`,
+      `${balanceIsPending ? balance_due + ' (Pending)' : 'Rs. 0.00 (Paid in Full)'}`,
       '</td>',
       '</tr>',
 
@@ -202,10 +211,10 @@ serve(async (req: Request) => {
       '</table>',
       '</td></tr>',
 
-      // Split Payment Summary (if applicable)
-      splitSummaryBlock,
+      // Balance Summary (always shown when fee data available)
+      balanceSummaryBlock,
 
-      // Installment Breakdown Table (if applicable)
+      // Installment Breakdown Table (split payments only)
       installmentBlock,
 
       // Download Button

@@ -46,12 +46,17 @@ export const sendReceiptByEmail = async (tx, pdfUrl, ledger = null) => {
         date:           tx.date          || 'N/A',
         transaction_id: tx.transaction_id || 'N/A',
         pdf_url:        pdfUrl,
-        // Split payment summary fields
-        is_split:       isSplit,
-        total_fee:      isSplit ? fmtINR(ledger.totalFee)   : null,
-        total_paid:     isSplit ? fmtINR(ledger.totalPaid)  : null,
-        balance_due:    isSplit ? fmtINR(ledger.balanceDue) : null,
-        installments:   installments,
+        // Balance summary fields — raw numbers sent for reliable comparison in edge function
+        is_split:           isSplit,
+        total_fee:          ledger ? fmtINR(ledger.totalFee)   : fmtINR(tx.amount),
+        total_paid:         ledger ? fmtINR(ledger.totalPaid)  : fmtINR(tx.amount),
+        balance_due:        ledger ? fmtINR(ledger.balanceDue) : 'Rs. 0.00',
+        // Raw numeric values — used in edge function for correct conditional logic (no string parsing)
+        balance_due_num:    ledger ? Number(ledger.balanceDue)  : 0,
+        total_fee_num:      ledger ? Number(ledger.totalFee)    : Number(tx.amount || 0),
+        total_paid_num:     ledger ? Number(ledger.totalPaid)   : Number(tx.amount || 0),
+        balance_cleared:    ledger ? ledger.balanceDue <= 0 : true,
+        installments:       installments,
       }
     });
 

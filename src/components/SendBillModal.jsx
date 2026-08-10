@@ -41,16 +41,19 @@ const SendBillModal = ({ tx, ledger, onClose }) => {
     setPhase('uploading');
     setGlobalError('');
     try {
-      const splitInfo = isSplit ? {
+      // Always pass balance info so PDF summary section always shows balance details
+      const splitInfo = ledger ? {
         totalFee,
         totalPaid,
         balanceDue,
-        installments: ledger.studentTxs.map(t => ({
-          receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
-          date: t.date,
-          amount: Number(t.amount || 0),
-          payment_mode: t.payment_mode || 'N/A'
-        }))
+        installments: isSplit
+          ? ledger.studentTxs.map(t => ({
+              receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+              date: t.date,
+              amount: Number(t.amount || 0),
+              payment_mode: t.payment_mode || 'N/A'
+            }))
+          : [] // single payment — no installment breakdown table
       } : null;
       const { base64, filename } = await generateBillReceiptAsBase64(tx, splitInfo);
       const url = await uploadReceiptPdf(base64, filename);
@@ -71,7 +74,7 @@ const SendBillModal = ({ tx, ledger, onClose }) => {
     }
     setEmailStatus('sending');
     setEmailError('');
-    const result = await sendReceiptByEmail(tx, pdfUrl, isSplit ? ledger : null);
+    const result = await sendReceiptByEmail(tx, pdfUrl, ledger);
     if (result.success) {
       setEmailStatus('sent');
     } else {
@@ -90,22 +93,25 @@ const SendBillModal = ({ tx, ledger, onClose }) => {
     if (rawNum.startsWith('+')) rawNum = rawNum.slice(1);
     if (rawNum.length === 10 && !rawNum.startsWith('91')) rawNum = '91' + rawNum;
 
-    const paymentSection = isSplit
-      ? (() => {
-          const lines = [
-            `*Payment Summary*`,
-            `| Total Course Fee : Rs. ${fmtINR(totalFee)}`,
-            `| Total Paid       : Rs. ${fmtINR(totalPaid)}`,
-            `| Balance Due      : Rs. ${fmtINR(balanceDue)}`,
-            ``,
-            `*Installment Breakdown*`,
-            ...ledger.studentTxs.map((t, i) =>
-              `| ${i + 1}. ${t.date}  Rs. ${fmtINR(t.amount)}  (${t.payment_mode})  ${t.receipt_no || `REC-${(t.id||'').replace('tx-','')}`}`
-            )
-          ];
-          return lines.join('\n');
-        })()
-      : `| *Amount Paid  : Rs. ${amount}*`;
+    // Build balance summary — always shown for all payment types
+    const balanceStatus = balanceDue > 0
+      ? `| Balance Due      : Rs. ${fmtINR(balanceDue)} (Pending)`
+      : `| Balance Due      : Rs. 0.00 (Paid in Full)`;
+
+    const paymentSummary = [
+      `*Payment Summary*`,
+      `| Total Course Fee : Rs. ${fmtINR(totalFee)}`,
+      `| Total Paid       : Rs. ${fmtINR(totalPaid)}`,
+      balanceStatus
+    ].join('\n');
+
+    // Installment breakdown only for split payments
+    const installmentBreakdown = isSplit
+      ? `\n\n*Installment Breakdown*\n` +
+        ledger.studentTxs.map((t, i) =>
+          `| ${i + 1}. ${t.date}  Rs. ${fmtINR(t.amount)}  (${t.payment_mode})  ${t.receipt_no || `REC-${(t.id||'').replace('tx-','')}`}`
+        ).join('\n')
+      : '';
 
     const message = encodeURIComponent(
 `*OpenSkools - Payment Receipt*
@@ -121,7 +127,7 @@ Dear *${tx.student_name || 'Student'}*, your payment has been received!
 | *Amount Paid  : Rs. ${amount}*
 ${tx.transaction_id ? `| Txn ID       : ${tx.transaction_id}` : ''}
 
-${paymentSection}
+${paymentSummary}${installmentBreakdown}
 
 *Download Your Receipt PDF:*
 ${pdfUrl}
