@@ -1,17 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from './AuthContext';
-import { INITIAL_TRANSACTIONS } from '../utils/mockData';
 
 const FinanceContext = createContext(null);
 
 export const FinanceProvider = ({ children }) => {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load transactions when user or demo mode status changes
+  // Load transactions when user changes
   useEffect(() => {
     if (!user) {
       setTransactions([]);
@@ -23,54 +22,27 @@ export const FinanceProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      if (isDemoMode) {
-        // Load from local storage or pre-populate with mock data
-        const localData = localStorage.getItem('openskools_transactions');
-        if (localData) {
-          setTransactions(JSON.parse(localData).sort((a, b) => new Date(b.date) - new Date(a.date)));
-        } else {
-          localStorage.setItem('openskools_transactions', JSON.stringify(INITIAL_TRANSACTIONS));
-          setTransactions([...INITIAL_TRANSACTIONS].sort((a, b) => new Date(b.date) - new Date(a.date)));
-        }
-        setLoading(false);
-      } else {
-        // Fetch from Supabase
-        try {
-          const { data, error } = await supabase
-            .from('transactions')
-            .select('*')
-            .order('date', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('date', { ascending: false });
 
-          if (error) {
-            console.error('Supabase query error:', error);
-            setError(error.message);
-            // Auto fallback to local storage if tables do not exist
-            if (error.code === 'P0001' || error.message.includes('relation "public.transactions" does not exist')) {
-              setError('Supabase transactions table not found. Using local sandbox fallback.');
-              const localData = localStorage.getItem('openskools_transactions') 
-                ? JSON.parse(localStorage.getItem('openskools_transactions'))
-                : INITIAL_TRANSACTIONS;
-              setTransactions(localData.sort((a, b) => new Date(b.date) - new Date(a.date)));
-            }
-          } else {
-            setTransactions(data || []);
-          }
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
+        if (error) {
+          console.error('Supabase query error:', error);
+          setError(error.message);
+        } else {
+          setTransactions(data || []);
         }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadData();
-  }, [user, isDemoMode]);
-
-  // Save local storage transactions helper
-  const saveLocalTransactions = (newTxList) => {
-    localStorage.setItem('openskools_transactions', JSON.stringify(newTxList));
-    setTransactions(newTxList.sort((a, b) => new Date(b.date) - new Date(a.date)));
-  };
+  }, [user]);
 
   const generateTrackingId = (type) => {
     const prefix = type === 'income' ? 'REC' : 'VOU';
@@ -86,54 +58,38 @@ export const FinanceProvider = ({ children }) => {
     try {
       const trackingId = generateTrackingId(txData.type);
       const trackingField = txData.type === 'income' ? 'receipt_no' : 'voucher_no';
-      if (isDemoMode) {
-        const newTx = {
-          ...txData,
-          id: `tx-${Date.now()}`,
-          created_at: new Date().toISOString(),
-          created_by: user.id,
-          [trackingField]: trackingId,
-          total_fee: parseFloat(txData.total_fee || txData.amount || 0),
-          balance_due: parseFloat(txData.balance_due || 0)
-        };
-        const updated = [...transactions, newTx];
-        saveLocalTransactions(updated);
-        setLoading(false);
-        return { success: true, data: newTx };
-      } else {
-        // Prepare data for Supabase
-        const dbTx = {
-          type: txData.type,
-          date: txData.date,
-          category: txData.category,
-          amount: parseFloat(txData.amount),
-          payment_mode: txData.payment_mode,
-          notes: txData.notes || '',
-          student_name: txData.type === 'income' ? txData.student_name : null,
-          course: txData.type === 'income' ? txData.course : null,
-          transaction_id: txData.type === 'income' ? txData.transaction_id : null,
-          whatsapp: txData.type === 'income' ? (txData.whatsapp || null) : null,
-          email: txData.type === 'income' ? (txData.email || null) : null,
-          vendor: txData.type === 'expense' ? txData.vendor : null,
-          bill_upload_url: txData.type === 'expense' ? txData.bill_upload_url : null,
-          total_fee: txData.type === 'income' ? parseFloat(txData.total_fee || txData.amount || 0) : null,
-          balance_due: txData.type === 'income' ? parseFloat(txData.balance_due || 0) : null,
-          created_by: user.id,
-          [trackingField]: trackingId
-        };
 
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert([dbTx])
-          .select()
-          .single();
+      const dbTx = {
+        type: txData.type,
+        date: txData.date,
+        category: txData.category,
+        amount: parseFloat(txData.amount),
+        payment_mode: txData.payment_mode,
+        notes: txData.notes || '',
+        student_name: txData.type === 'income' ? txData.student_name : null,
+        course: txData.type === 'income' ? txData.course : null,
+        transaction_id: txData.type === 'income' ? txData.transaction_id : null,
+        whatsapp: txData.type === 'income' ? (txData.whatsapp || null) : null,
+        email: txData.type === 'income' ? (txData.email || null) : null,
+        vendor: txData.type === 'expense' ? txData.vendor : null,
+        bill_upload_url: txData.type === 'expense' ? txData.bill_upload_url : null,
+        total_fee: txData.type === 'income' ? parseFloat(txData.total_fee || txData.amount || 0) : null,
+        balance_due: txData.type === 'income' ? parseFloat(txData.balance_due || 0) : null,
+        created_by: user.id,
+        [trackingField]: trackingId
+      };
 
-        if (error) throw error;
-        
-        setTransactions(prev => [data, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
-        setLoading(false);
-        return { success: true, data };
-      }
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert([dbTx])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setTransactions(prev => [data, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setLoading(false);
+      return { success: true, data };
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -146,47 +102,35 @@ export const FinanceProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      if (isDemoMode) {
-        const updated = transactions.map(t => {
-          if (t.id === id) {
-            return { ...t, ...txData, amount: parseFloat(txData.amount) };
-          }
-          return t;
-        });
-        saveLocalTransactions(updated);
-        setLoading(false);
-        return { success: true };
-      } else {
-        const dbTx = {
-          date: txData.date,
-          category: txData.category,
-          amount: parseFloat(txData.amount),
-          payment_mode: txData.payment_mode,
-          notes: txData.notes || '',
-          student_name: txData.type === 'income' ? txData.student_name : null,
-          course: txData.type === 'income' ? txData.course : null,
-          transaction_id: txData.type === 'income' ? txData.transaction_id : null,
-          whatsapp: txData.type === 'income' ? (txData.whatsapp || null) : null,
-          email: txData.type === 'income' ? (txData.email || null) : null,
-          vendor: txData.type === 'expense' ? txData.vendor : null,
-          bill_upload_url: txData.type === 'expense' ? txData.bill_upload_url : null,
-          total_fee: txData.type === 'income' ? parseFloat(txData.total_fee || txData.amount || 0) : null,
-          balance_due: txData.type === 'income' ? parseFloat(txData.balance_due || 0) : null,
-        };
+      const dbTx = {
+        date: txData.date,
+        category: txData.category,
+        amount: parseFloat(txData.amount),
+        payment_mode: txData.payment_mode,
+        notes: txData.notes || '',
+        student_name: txData.type === 'income' ? txData.student_name : null,
+        course: txData.type === 'income' ? txData.course : null,
+        transaction_id: txData.type === 'income' ? txData.transaction_id : null,
+        whatsapp: txData.type === 'income' ? (txData.whatsapp || null) : null,
+        email: txData.type === 'income' ? (txData.email || null) : null,
+        vendor: txData.type === 'expense' ? txData.vendor : null,
+        bill_upload_url: txData.type === 'expense' ? txData.bill_upload_url : null,
+        total_fee: txData.type === 'income' ? parseFloat(txData.total_fee || txData.amount || 0) : null,
+        balance_due: txData.type === 'income' ? parseFloat(txData.balance_due || 0) : null,
+      };
 
-        const { data, error } = await supabase
-          .from('transactions')
-          .update(dbTx)
-          .eq('id', id)
-          .select()
-          .single();
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(dbTx)
+        .eq('id', id)
+        .select()
+        .single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setTransactions(prev => prev.map(t => t.id === id ? data : t).sort((a, b) => new Date(b.date) - new Date(a.date)));
-        setLoading(false);
-        return { success: true, data };
-      }
+      setTransactions(prev => prev.map(t => t.id === id ? data : t).sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setLoading(false);
+      return { success: true, data };
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -199,23 +143,16 @@ export const FinanceProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      if (isDemoMode) {
-        const updated = transactions.filter(t => t.id !== id);
-        saveLocalTransactions(updated);
-        setLoading(false);
-        return { success: true };
-      } else {
-        const { error } = await supabase
-          .from('transactions')
-          .delete()
-          .eq('id', id);
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setTransactions(prev => prev.filter(t => t.id !== id));
-        setLoading(false);
-        return { success: true };
-      }
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      setLoading(false);
+      return { success: true };
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -225,48 +162,31 @@ export const FinanceProvider = ({ children }) => {
 
   // Bill Upload Handler — uses Cloudinary unsigned upload
   const uploadBill = async (file) => {
-    if (isDemoMode) {
-      // Simulate file upload with Base64 URL for offline storage
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-    } else {
-      try {
-        const cloudName   = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset);
-        formData.append('folder', 'openskools/bills');
-        formData.append('access_mode', 'public');
-        formData.append('type', 'upload');
+    try {
+      const cloudName   = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset);
+      formData.append('folder', 'openskools/bills');
+      formData.append('access_mode', 'public');
+      formData.append('type', 'upload');
 
-        const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
-          { method: 'POST', body: formData }
-        );
-        if (!res.ok) throw new Error(`Cloudinary upload failed: ${res.statusText}`);
-        const data = await res.json();
-        return data.secure_url;
-      } catch (err) {
-        console.error('Bill upload failed, using local fallback:', err);
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
-      }
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+        { method: 'POST', body: formData }
+      );
+      if (!res.ok) throw new Error(`Cloudinary upload failed: ${res.statusText}`);
+      const data = await res.json();
+      return data.secure_url;
+    } catch (err) {
+      console.error('Bill upload failed:', err);
+      throw err;
     }
   };
 
   // Receipt PDF Upload Handler — uploads PDF to Cloudinary as raw type for proper PDF serving
   const uploadReceiptPdf = async (base64Pdf, filename) => {
-    if (isDemoMode) {
-      throw new Error('PDF sharing is not available in Demo Mode. Please log in with a real account.');
-    }
-
     const cloudName    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 

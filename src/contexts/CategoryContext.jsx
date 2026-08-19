@@ -5,11 +5,8 @@ import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../utils/mockData';
 
 const CategoryContext = createContext(null);
 
-const LS_KEY_INCOME = 'openskools_income_categories';
-const LS_KEY_EXPENSE = 'openskools_expense_categories';
-
 export const CategoryProvider = ({ children }) => {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
 
   const [incomeCategories, setIncomeCategories] = useState(INCOME_CATEGORIES);
   const [expenseCategories, setExpenseCategories] = useState(EXPENSE_CATEGORIES);
@@ -18,15 +15,6 @@ export const CategoryProvider = ({ children }) => {
   const loadCategories = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-
-    if (isDemoMode) {
-      const savedIncome = localStorage.getItem(LS_KEY_INCOME);
-      const savedExpense = localStorage.getItem(LS_KEY_EXPENSE);
-      setIncomeCategories(savedIncome ? JSON.parse(savedIncome) : INCOME_CATEGORIES);
-      setExpenseCategories(savedExpense ? JSON.parse(savedExpense) : EXPENSE_CATEGORIES);
-      setLoading(false);
-      return;
-    }
 
     try {
       const { data, error } = await supabase
@@ -50,16 +38,11 @@ export const CategoryProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, isDemoMode]);
+  }, [user]);
 
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
-
-  const persistLocal = (type, list) => {
-    const key = type === 'income' ? LS_KEY_INCOME : LS_KEY_EXPENSE;
-    localStorage.setItem(key, JSON.stringify(list));
-  };
 
   const addCategory = async (type, name) => {
     const trimmed = name.trim();
@@ -70,18 +53,11 @@ export const CategoryProvider = ({ children }) => {
     }
     const updated = [...current, trimmed];
 
-    if (isDemoMode) {
-      type === 'income' ? setIncomeCategories(updated) : setExpenseCategories(updated);
-      persistLocal(type, updated);
-      return { success: true };
-    }
     try {
       const { error } = await supabase.from('categories').insert([{ type, name: trimmed }]);
       if (error) throw error;
     } catch (err) {
-      // Table may not exist yet — persist locally as fallback
-      console.warn('Supabase categories insert failed, using localStorage:', err.message);
-      persistLocal(type, updated);
+      console.warn('Supabase categories insert failed:', err.message);
     }
     type === 'income' ? setIncomeCategories(updated) : setExpenseCategories(updated);
     return { success: true };
@@ -99,11 +75,6 @@ export const CategoryProvider = ({ children }) => {
     }
     const updated = current.map(c => (c === oldName ? trimmed : c));
 
-    if (isDemoMode) {
-      type === 'income' ? setIncomeCategories(updated) : setExpenseCategories(updated);
-      persistLocal(type, updated);
-      return { success: true };
-    }
     try {
       const { error } = await supabase
         .from('categories')
@@ -112,8 +83,7 @@ export const CategoryProvider = ({ children }) => {
         .eq('name', oldName);
       if (error) throw error;
     } catch (err) {
-      console.warn('Supabase categories update failed, using localStorage:', err.message);
-      persistLocal(type, updated);
+      console.warn('Supabase categories update failed:', err.message);
     }
     type === 'income' ? setIncomeCategories(updated) : setExpenseCategories(updated);
     return { success: true };
@@ -123,11 +93,6 @@ export const CategoryProvider = ({ children }) => {
     const current = type === 'income' ? incomeCategories : expenseCategories;
     const updated = current.filter(c => c !== name);
 
-    if (isDemoMode) {
-      type === 'income' ? setIncomeCategories(updated) : setExpenseCategories(updated);
-      persistLocal(type, updated);
-      return { success: true };
-    }
     try {
       const { error } = await supabase
         .from('categories')
@@ -136,8 +101,7 @@ export const CategoryProvider = ({ children }) => {
         .eq('name', name);
       if (error) throw error;
     } catch (err) {
-      console.warn('Supabase categories delete failed, using localStorage:', err.message);
-      persistLocal(type, updated);
+      console.warn('Supabase categories delete failed:', err.message);
     }
     type === 'income' ? setIncomeCategories(updated) : setExpenseCategories(updated);
     return { success: true };

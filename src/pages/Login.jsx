@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { BookOpen, Key, Mail, Loader2 } from 'lucide-react';
 
 const Login = () => {
-  const { login, isDemoMode, toggleDemoMode } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,14 +57,6 @@ const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isDemoMode && (
-              <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
-                <strong>Demo Mode Active</strong><br/>
-                Admin: admin@openskools.com<br/>
-                Accountant: accountant@openskools.com<br/>
-                Password for both: password
-              </div>
-            )}
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                 Email Address
@@ -118,15 +110,6 @@ const Login = () => {
               )}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => toggleDemoMode(!isDemoMode)}
-              className="text-xs text-slate-500 hover:text-primary underline transition-colors"
-            >
-              Switch to {isDemoMode ? 'Live (Supabase)' : 'Demo Mode'}
-            </button>
-          </div>
         </div>
       </div>
     </div>
