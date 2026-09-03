@@ -57,6 +57,7 @@ const Income = () => {
     const computedReceiptNo = item.receipt_no || `REC-${(item.id || '').replace('tx-', '')}`;
     const matchesSearch = 
       (item.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.student_id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.course || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.transaction_id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.notes || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
