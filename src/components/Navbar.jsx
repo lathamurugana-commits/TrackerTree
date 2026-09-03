@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFinance } from '../contexts/FinanceContext';
-import { Sun, Moon, Bell, LogOut, User, Menu } from 'lucide-react';
+import { Sun, Moon, Bell, LogOut, User, Menu, Settings } from 'lucide-react';
 
 const Navbar = ({ onMenuClick, currentTitle }) => {
   const { user, role, logout } = useAuth();
   const { transactions } = useFinance();
+  const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [theme, setTheme] = useState(() => {
@@ -157,6 +159,13 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
                   {role === 'admin' ? 'Administrator' : 'Accountant'}
                 </span>
               </div>
+              <button
+                onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
+                className="flex w-full items-center space-x-2 px-4 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Edit Profile</span>
+              </button>
               <button
                 onClick={logout}
                 className="flex w-full items-center space-x-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"

@@ -13,6 +13,7 @@ import Expense from './pages/Expense';
 import Reports from './pages/Reports';
 import Categories from './pages/Categories';
 import Tracking from './pages/Tracking';
+import Profile from './pages/Profile';
 import SplashScreen from './components/SplashScreen';
 
 const DashboardLayout = ({ children }) => {
@@ -28,6 +29,7 @@ const DashboardLayout = ({ children }) => {
       case '/tracking': return 'Track Document';
       case '/reports': return 'Reports & Exports';
       case '/categories': return 'Category Management';
+      case '/profile': return 'My Profile';
       default: return 'Finance Manager';
     }
   };
@@ -126,6 +128,16 @@ const App = () => {
                 <ProtectedRoute>
                   <DashboardLayout>
                     <Categories />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Profile />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
