@@ -164,21 +164,21 @@ const Categories = () => {
   const categories = activeTab === 'income' ? incomeCategories : expenseCategories;
 
   return (
-    <div className="min-h-full p-4 md:p-6 space-y-6">
+    <div className="min-h-full p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 sm:gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Categories</h1>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">Categories</h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Customise income and expense categories used across the app
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1 dark:bg-slate-800 self-start md:self-auto">
+        <div className="flex items-center gap-1 sm:gap-2 rounded-full bg-slate-100 p-1 dark:bg-slate-800 self-start md:self-auto">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === tab.key
                   ? tab.key === 'income'
                     ? 'bg-emerald-500 text-white shadow-sm'
@@ -220,7 +220,7 @@ const Categories = () => {
       </div>
 
       {/* Category list */}
-      <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+      <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900/40">
         <div className="mb-4 flex items-center gap-2">
           <CategoryBadge type={activeTab} />
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">

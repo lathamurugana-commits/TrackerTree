@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import { Search, Plus, Edit2, Trash2, Calendar, FileText, ChevronLeft, ChevronRight, User, GraduationCap, DollarSign, CreditCard, Download, Phone, Mail, Share2, AlertCircle, Layers, Hash } from 'lucide-react';
 import { generateBillReceipt } from '../utils/exportUtils';
 import SendBillModal from '../components/SendBillModal';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const Income = () => {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, getStudentLedger } = useFinance();
@@ -262,27 +263,33 @@ const Income = () => {
     setIsAddModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this income transaction?')) {
-      const res = await deleteTransaction(id);
-      if (!res.success) {
-        alert(`Error: ${res.error}`);
-      }
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, tx: null });
+
+  const handleDeleteClick = (tx) => {
+    setDeleteConfirm({ isOpen: true, tx });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.tx) return;
+    const res = await deleteTransaction(deleteConfirm.tx.id);
+    if (!res.success) {
+      alert(`Error: ${res.error}`);
     }
+    setDeleteConfirm({ isOpen: false, tx: null });
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
       
       {/* Top Section Header */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Income Records</h2>
           <p className="text-xs text-slate-400">Track and manage course admissions and other school income streams</p>
         </div>
         <button
           onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center space-x-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors"
+          className="inline-flex w-full sm:w-auto min-h-[44px] items-center justify-center space-x-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors"
         >
           <Plus className="h-4.5 w-4.5" />
           <span>Add Income</span>
@@ -290,7 +297,7 @@ const Income = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
         
         {/* Search */}
         <div className="relative flex-1">
@@ -302,7 +309,7 @@ const Income = () => {
             placeholder="Search by student, course, tx ID..."
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-4 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary"
+            className="w-full min-h-[42px] sm:min-h-0 rounded-lg border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-4 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary"
           />
         </div>
 
@@ -311,7 +318,7 @@ const Income = () => {
           <select
             value={selectedCategory}
             onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full min-h-[42px] sm:min-h-0 rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="">All Categories</option>
             {incomeCategories.map(c => (
@@ -325,7 +332,7 @@ const Income = () => {
           <select
             value={selectedPaymentMode}
             onChange={(e) => { setSelectedPaymentMode(e.target.value); setCurrentPage(1); }}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full min-h-[42px] sm:min-h-0 rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="">All Payment Modes</option>
             {PAYMENT_MODES.map(pm => (
@@ -336,9 +343,11 @@ const Income = () => {
 
       </div>
 
-      {/* Main Table */}
+      {/* Main Table Container */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="overflow-x-auto">
+        
+        {/* Desktop Table (Hidden on Mobile) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
@@ -368,7 +377,7 @@ const Income = () => {
                     </td>
                     
                     {/* Student & Course */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
                       <p className="font-bold text-slate-900 dark:text-white">{tx.student_name}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{tx.course}</p>
                     </td>
@@ -489,15 +498,13 @@ const Income = () => {
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        {role === 'admin' && (
-                          <button
-                            onClick={() => handleDelete(tx.id)}
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
-                            title="Delete transaction"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeleteClick(tx)}
+                          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 transition-colors"
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -507,10 +514,162 @@ const Income = () => {
           </table>
         </div>
 
+        {/* Mobile Card List (Visible on Mobile only, < md) */}
+        <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {paginatedIncomes.length === 0 ? (
+            <div className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
+              No income records found.
+            </div>
+          ) : (
+            paginatedIncomes.map((tx) => {
+              const ledger = getStudentLedger(tx.student_name, tx.course);
+              const hasSplit = ledger && ledger.studentTxs && ledger.studentTxs.length > 1;
+              const receiptNo = tx.receipt_no || `REC-${(tx.id || '').replace('tx-', '')}`;
+
+              return (
+                <div key={tx.id} className="p-4 space-y-3 hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
+                  {/* Top Row: Date, Student info & Amount */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[11px] font-medium text-slate-400">
+                        {formatDate(tx.date)}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                        {tx.student_name}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {tx.course}
+                      </p>
+                      {tx.student_id && (
+                        <span className="inline-block mt-1 rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                          ID: {tx.student_id}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(tx.amount)}
+                      </div>
+                      {ledger.balanceDue > 0 ? (
+                        <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-orange-50 border border-orange-200 px-2 py-0.5 text-[10px] font-semibold text-orange-600 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-400">
+                          <AlertCircle className="h-2.5 w-2.5" />
+                          Due: {formatCurrency(ledger.balanceDue)}
+                        </span>
+                      ) : (tx.total_fee && parseFloat(tx.total_fee) > parseFloat(tx.amount || 0)) ? (
+                        <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400">
+                          ✓ Fully Paid
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Metadata chips */}
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400">
+                      {tx.category}
+                    </span>
+                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                      {tx.payment_mode}
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-400 truncate max-w-[140px]">
+                      {receiptNo}
+                    </span>
+                  </div>
+
+                  {/* Contact details if present */}
+                  {(tx.whatsapp || tx.email) && (
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                      {tx.whatsapp && (
+                        <a
+                          href={`https://wa.me/${tx.whatsapp.replace(/[\s+]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 text-emerald-600 hover:underline dark:text-emerald-400"
+                        >
+                          <Phone className="h-3 w-3" />
+                          <span>{tx.whatsapp}</span>
+                        </a>
+                      )}
+                      {tx.email && (
+                        <a
+                          href={`mailto:${tx.email}`}
+                          className="flex items-center gap-1 text-slate-500 hover:underline dark:text-slate-400"
+                        >
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate max-w-[160px]">{tx.email}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                    <button
+                      onClick={() => {
+                        const splitInfo = ledger ? {
+                          totalFee: ledger.totalFee,
+                          totalPaid: ledger.totalPaid,
+                          balanceDue: ledger.balanceDue,
+                          studentId: tx.student_id || ledger.studentId,
+                          installments: hasSplit
+                            ? ledger.studentTxs.map(t => ({
+                                receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+                                date: t.date,
+                                amount: Number(t.amount || 0),
+                                payment_mode: t.payment_mode || 'N/A',
+                                student_id: t.student_id
+                              }))
+                            : []
+                        } : null;
+                        generateBillReceipt(tx, splitInfo);
+                      }}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                      title="Download Receipt PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setSendBillTx(tx)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                      title="Send bill via Email / WhatsApp"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    {ledger.balanceDue > 0 && (
+                      <button
+                        onClick={() => handleOpenInstallmentModal(tx)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 dark:border-orange-800/60 dark:bg-orange-950/30 dark:text-orange-400 transition-colors"
+                        title={`Record next installment (Balance: ${formatCurrency(ledger.balanceDue)})`}
+                      >
+                        <Layers className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleOpenEditModal(tx)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-primary dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                      title="Edit transaction"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(tx)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/60 dark:hover:bg-rose-950/30 transition-colors"
+                      title="Delete transaction"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
         {/* Pagination controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-            <span className="text-xs text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
+            <span className="text-xs text-slate-400 text-center sm:text-left">
               Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{startIndex + 1}</span> to{' '}
               <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {Math.min(startIndex + itemsPerPage, filteredIncomes.length)}
@@ -521,17 +680,17 @@ const Income = () => {
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-350">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-350 px-2">
                 Page {currentPage} of {totalPages}
               </span>
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -539,6 +698,18 @@ const Income = () => {
           </div>
         )}
       </div>
+
+      {/* CONFIRM DELETE DIALOG */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Income Record"
+        message={`Are you sure you want to delete the income transaction of ${deleteConfirm.tx ? formatCurrency(deleteConfirm.tx.amount) : ''} for ${deleteConfirm.tx?.student_name || 'this student'}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, tx: null })}
+      />
 
       {/* ADD INCOME MODAL */}
       <Modal
@@ -564,7 +735,7 @@ const Income = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Date</label>
               <div className="relative">
@@ -595,7 +766,7 @@ const Income = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student Name</label>
               <div className="relative">
@@ -646,7 +817,7 @@ const Income = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Amount (INR)</label>
               <div className="relative">
@@ -695,7 +866,7 @@ const Income = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">WhatsApp Number</label>
               <div className="relative">
@@ -831,7 +1002,7 @@ const Income = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Date</label>
               <div className="relative">
@@ -862,7 +1033,7 @@ const Income = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student Name</label>
               <div className="relative">
@@ -910,7 +1081,7 @@ const Income = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Amount (INR)</label>
               <div className="relative">
@@ -959,7 +1130,7 @@ const Income = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">WhatsApp Number</label>
               <div className="relative">

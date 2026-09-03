@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '../utils/helpers';
 import Modal from '../components/Modal';
 import { Search, Plus, Edit2, Trash2, Calendar, FileText, ChevronLeft, ChevronRight, UserCheck, Paperclip, DollarSign, ExternalLink, Image, Download } from 'lucide-react';
 import { generateExpenseVoucher } from '../utils/exportUtils';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const Expense = () => {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, uploadBill } = useFinance();
@@ -179,13 +180,19 @@ const Expense = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this expense record?')) {
-      const res = await deleteTransaction(id);
-      if (!res.success) {
-        alert(`Error: ${res.error}`);
-      }
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, tx: null });
+
+  const handleDeleteClick = (tx) => {
+    setDeleteConfirm({ isOpen: true, tx });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.tx) return;
+    const res = await deleteTransaction(deleteConfirm.tx.id);
+    if (!res.success) {
+      alert(`Error: ${res.error}`);
     }
+    setDeleteConfirm({ isOpen: false, tx: null });
   };
 
   const handleShowPreview = (url) => {
@@ -194,17 +201,17 @@ const Expense = () => {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
       
       {/* Top Section Header */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+      <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Expense Records</h2>
           <p className="text-xs text-slate-400">Track, upload receipts, and manage structural outlays and staff payouts</p>
         </div>
         <button
           onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center space-x-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors"
+          className="inline-flex w-full sm:w-auto min-h-[44px] items-center justify-center space-x-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors"
         >
           <Plus className="h-4.5 w-4.5" />
           <span>Add Expense</span>
@@ -212,7 +219,7 @@ const Expense = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
         
         {/* Search */}
         <div className="relative flex-1">
@@ -224,7 +231,7 @@ const Expense = () => {
             placeholder="Search by vendor, notes, category..."
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-4 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary"
+            className="w-full min-h-[42px] sm:min-h-0 rounded-lg border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-4 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-primary"
           />
         </div>
 
@@ -233,7 +240,7 @@ const Expense = () => {
           <select
             value={selectedCategory}
             onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full min-h-[42px] sm:min-h-0 rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="">All Categories</option>
             {expenseCategories.map(c => (
@@ -247,7 +254,7 @@ const Expense = () => {
           <select
             value={selectedPaymentMode}
             onChange={(e) => { setSelectedPaymentMode(e.target.value); setCurrentPage(1); }}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            className="w-full min-h-[42px] sm:min-h-0 rounded-lg border border-slate-200 bg-slate-50/50 py-2 px-3 text-xs text-slate-700 outline-none focus:border-primary focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
           >
             <option value="">All Payment Modes</option>
             {PAYMENT_MODES.map(pm => (
@@ -258,9 +265,11 @@ const Expense = () => {
 
       </div>
 
-      {/* Main Table */}
+      {/* Main Table Container */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="overflow-x-auto">
+        
+        {/* Desktop Table (Hidden on Mobile) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
@@ -290,7 +299,7 @@ const Expense = () => {
                     </td>
                     
                     {/* Vendor & Details */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
                       <p className="font-bold text-slate-900 dark:text-white">{tx.vendor}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title={tx.notes}>
                         {tx.notes || 'No description notes'}
@@ -351,15 +360,13 @@ const Expense = () => {
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        {role === 'admin' && (
-                          <button
-                            onClick={() => handleDelete(tx.id)}
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800"
-                            title="Delete transaction"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeleteClick(tx)}
+                          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 transition-colors"
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -369,10 +376,97 @@ const Expense = () => {
           </table>
         </div>
 
+        {/* Mobile Card List (Visible on Mobile only, < md) */}
+        <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {paginatedExpenses.length === 0 ? (
+            <div className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
+              No expense records found.
+            </div>
+          ) : (
+            paginatedExpenses.map((tx) => {
+              const voucherNo = tx.voucher_no || `VOU-${(tx.id || '').replace('tx-', '')}`;
+
+              return (
+                <div key={tx.id} className="p-4 space-y-3 hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
+                  {/* Top Row: Date, Vendor info & Amount */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[11px] font-medium text-slate-400">
+                        {formatDate(tx.date)}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
+                        {tx.vendor}
+                      </h4>
+                      {tx.notes && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          {tx.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                        {formatCurrency(tx.amount)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metadata chips */}
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-950/20 dark:text-rose-400">
+                      {tx.category}
+                    </span>
+                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                      {tx.payment_mode}
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-400 truncate max-w-[140px]">
+                      {voucherNo}
+                    </span>
+                    {tx.bill_upload_url && (
+                      <button
+                        onClick={() => handleShowPreview(tx.bill_upload_url)}
+                        className="inline-flex items-center gap-1 rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:bg-slate-200"
+                      >
+                        <Paperclip className="h-3 w-3" />
+                        <span>Bill</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                    <button
+                      onClick={() => generateExpenseVoucher(tx)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-rose-600 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                      title="Download Voucher PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleOpenEditModal(tx)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-primary dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                      title="Edit transaction"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(tx)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/60 dark:hover:bg-rose-950/30 transition-colors"
+                      title="Delete transaction"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
         {/* Pagination controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-            <span className="text-xs text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
+            <span className="text-xs text-slate-400 text-center sm:text-left">
               Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{startIndex + 1}</span> to{' '}
               <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {Math.min(startIndex + itemsPerPage, filteredExpenses.length)}
@@ -383,17 +477,17 @@ const Expense = () => {
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-350">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-350 px-2">
                 Page {currentPage} of {totalPages}
               </span>
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -401,6 +495,18 @@ const Expense = () => {
           </div>
         )}
       </div>
+
+      {/* CONFIRM DELETE DIALOG */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Expense Record"
+        message={`Are you sure you want to delete the expense of ${deleteConfirm.tx ? formatCurrency(deleteConfirm.tx.amount) : ''} to ${deleteConfirm.tx?.vendor || 'this vendor'}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, tx: null })}
+      />
 
       {/* ADD EXPENSE MODAL */}
       <Modal
@@ -415,7 +521,7 @@ const Expense = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Date</label>
               <div className="relative">
@@ -462,7 +568,7 @@ const Expense = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Amount (INR)</label>
               <div className="relative">
@@ -561,7 +667,7 @@ const Expense = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Date</label>
               <div className="relative">
@@ -608,7 +714,7 @@ const Expense = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Amount (INR)</label>
               <div className="relative">

@@ -179,15 +179,15 @@ _OpenSkools Finance Team_`
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Card */}
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="relative w-full max-w-md max-h-[92vh] flex flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-3.5 sm:py-4 dark:border-slate-800 shrink-0">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Share2 className="h-4 w-4 text-blue-500" />
@@ -199,19 +199,22 @@ _OpenSkools Finance Team_`
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* ── Receipt Info Strip ── */}
-        <div className="mx-6 mt-5 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Student</p>
-              <p className="font-bold text-slate-800 dark:text-white truncate">{tx.student_name || '—'}</p>
-            </div>
+        {/* ── Scrollable Body ── */}
+        <div className="overflow-y-auto flex-1">
+          {/* ── Receipt Info Strip ── */}
+          <div className="mx-4 sm:mx-6 mt-4 sm:mt-5 rounded-xl border border-slate-100 bg-slate-50 p-3.5 sm:p-4 dark:border-slate-800 dark:bg-slate-950">
+            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Student</p>
+                <p className="font-bold text-slate-800 dark:text-white truncate">{tx.student_name || '—'}</p>
+              </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Amount This Receipt</p>
               <p className="font-bold text-emerald-600">Rs. {amount}</p>
@@ -430,9 +433,10 @@ _OpenSkools Finance Team_`
             </>
           )}
         </div>
+        </div>
 
         {/* ── Footer ── */}
-        <div className="border-t border-slate-100 bg-slate-50 px-6 py-3 dark:border-slate-800 dark:bg-slate-950">
+        <div className="border-t border-slate-100 bg-slate-50 px-4 sm:px-6 py-3 dark:border-slate-800 dark:bg-slate-950 shrink-0">
           <p className="text-[10px] text-slate-400 leading-relaxed">
             📧 Email sends the actual <strong>PDF receipt</strong> via Google SMTP (Gmail).<br />
             💬 WhatsApp includes the PDF download link + receipt summary in the message.

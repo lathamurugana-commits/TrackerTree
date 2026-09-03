@@ -53,25 +53,26 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 md:px-6">
       {/* Left side: Menu toggle for mobile and Current view title */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
         <button
           onClick={onMenuClick}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 md:hidden"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 md:hidden"
+          aria-label="Open Navigation Menu"
         >
           <Menu className="h-6 w-6" />
         </button>
-        <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-200 md:text-xl capitalize">
+        <h1 className="text-base sm:text-lg md:text-xl font-semibold text-slate-800 dark:text-slate-200 capitalize truncate">
           {currentTitle || 'Dashboard'}
         </h1>
       </div>
 
       {/* Right side controls */}
-      <div className="flex items-center space-x-2 md:space-x-4">
+      <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
 
         {/* Dark/Light mode toggle */}
         <button
           onClick={toggleTheme}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
           aria-label="Toggle Theme"
         >
           {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -84,7 +85,7 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
               setShowNotifications(!showNotifications);
               setShowProfileMenu(false);
             }}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -94,7 +95,7 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-xs sm:w-80 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900 z-50">
               <div className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-800 dark:border-slate-800 dark:text-slate-200">
                 Recent Activity Notifications
               </div>

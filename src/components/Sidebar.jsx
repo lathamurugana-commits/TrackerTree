@@ -41,7 +41,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           </NavLink>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 transition-colors md:hidden"
+            aria-label="Close Navigation Sidebar"
           >
             <X className="h-5 w-5" />
           </button>

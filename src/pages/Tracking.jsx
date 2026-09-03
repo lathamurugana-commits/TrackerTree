@@ -60,7 +60,7 @@ const Tracking = () => {
     : result ? (result.voucher_no || `VOU-${(result.id || '').replace('tx-', '')}`) : '';
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 max-w-4xl mx-auto">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Track Document</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -68,8 +68,8 @@ const Tracking = () => {
         </p>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <form onSubmit={handleSearch} className="flex gap-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
               <Search className="h-5 w-5" />
@@ -79,12 +79,12 @@ const Tracking = () => {
               placeholder="e.g. REC-20260718-A3F2 or VOU-..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+              className="w-full min-h-[44px] rounded-lg border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
             />
           </div>
           <button
             type="submit"
-            className="rounded-lg bg-primary px-6 py-3 font-semibold text-white shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors"
+            className="w-full sm:w-auto min-h-[44px] rounded-lg bg-primary px-6 py-3 font-semibold text-white shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors"
           >
             Search
           </button>
@@ -95,7 +95,7 @@ const Tracking = () => {
         <div className="mt-6">
           {result ? (
             <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-              <div className="border-b border-slate-100 bg-slate-50/50 p-6 dark:border-slate-800 dark:bg-slate-900/50 flex justify-between items-start">
+              <div className="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div className="flex items-center space-x-3">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${
                     result.type === 'income' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30'
