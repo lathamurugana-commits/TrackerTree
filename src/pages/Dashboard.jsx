@@ -11,7 +11,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { TrendingUp, TrendingDown, Landmark, Wallet, CircleDollarSign, Calendar, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, CircleDollarSign, Clock, Calendar, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // Register Chart.js components
@@ -160,7 +160,7 @@ const Dashboard = () => {
     <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
       
       {/* Overview Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         
         {/* Total Income */}
         <div className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -210,35 +210,19 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Cash Balance */}
+        {/* Pending Due */}
         <div className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cash Balance</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Due</span>
             <div className="rounded-lg bg-amber-50 p-2 text-amber-600 transition-colors group-hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400">
-              <Wallet className="h-5 w-5" />
+              <Clock className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate">
-              {formatCurrency(metrics.cashBalance)}
+            <h3 className="text-xl font-bold text-amber-600 dark:text-amber-400 truncate">
+              {formatCurrency(metrics.pendingDue)}
             </h3>
-            <p className="mt-1 text-[10px] font-medium text-slate-400">Physical drawer cash</p>
-          </div>
-        </div>
-
-        {/* Bank Balance */}
-        <div className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bank Balance</span>
-            <div className="rounded-lg bg-teal-50 p-2 text-teal-600 transition-colors group-hover:bg-teal-100 dark:bg-teal-950/30 dark:text-teal-400">
-              <Landmark className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate">
-              {formatCurrency(metrics.bankBalance)}
-            </h3>
-            <p className="mt-1 text-[10px] font-medium text-slate-400">Electronic accounts</p>
+            <p className="mt-1 text-[10px] font-medium text-slate-400">Outstanding student fees</p>
           </div>
         </div>
 

@@ -32,6 +32,9 @@ export const calculateMetrics = (transactions) => {
   let cashBalance = 0;
   let bankBalance = 0;
 
+  // Group income transactions by student + course to compute total pending due
+  const studentCourseGroups = {};
+
   transactions.forEach((t) => {
     const amt = parseFloat(t.amount) || 0;
     if (t.type === 'income') {
@@ -40,6 +43,14 @@ export const calculateMetrics = (transactions) => {
         cashBalance += amt;
       } else {
         bankBalance += amt;
+      }
+
+      if (t.student_name && t.course) {
+        const key = `${t.student_name.trim().toLowerCase()}:::${t.course.trim().toLowerCase()}`;
+        if (!studentCourseGroups[key]) {
+          studentCourseGroups[key] = [];
+        }
+        studentCourseGroups[key].push(t);
       }
     } else if (t.type === 'expense') {
       totalExpenses += amt;
@@ -51,6 +62,14 @@ export const calculateMetrics = (transactions) => {
     }
   });
 
+  let pendingDue = 0;
+  Object.values(studentCourseGroups).forEach((group) => {
+    const totalFee = Math.max(...group.map(t => parseFloat(t.total_fee || t.amount || 0)), 0);
+    const totalPaid = group.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const balance = Math.max(0, totalFee - totalPaid);
+    pendingDue += balance;
+  });
+
   const netProfit = totalIncome - totalExpenses;
 
   return {
@@ -58,6 +77,7 @@ export const calculateMetrics = (transactions) => {
     totalExpenses,
     netProfit,
     cashBalance,
-    bankBalance
+    bankBalance,
+    pendingDue
   };
 };
