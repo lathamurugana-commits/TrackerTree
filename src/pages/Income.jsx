@@ -27,6 +27,9 @@ const Income = () => {
   const [currentTx, setCurrentTx] = useState(null);
   // Send Bill modal
   const [sendBillTx, setSendBillTx] = useState(null);
+  // Installment mode tracking
+  const [isInstallmentMode, setIsInstallmentMode] = useState(false);
+  const [installmentLedger, setInstallmentLedger] = useState(null);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -88,6 +91,8 @@ const Income = () => {
       payment_type: 'full'
     });
     setFormError('');
+    setIsInstallmentMode(false);
+    setInstallmentLedger(null);
   };
 
   const handleOpenAddModal = () => {
@@ -140,13 +145,21 @@ const Income = () => {
         setFormError('Amount Paid cannot exceed Total Course Fee.');
         return;
       }
+      // Validate against remaining balance for installments
+      if (isInstallmentMode && installmentLedger) {
+        if (parseFloat(formData.amount) > installmentLedger.balanceDue) {
+          setFormError(`Amount cannot exceed remaining balance of ${formatCurrency(installmentLedger.balanceDue)}.`);
+          return;
+        }
+      }
     }
 
     const totalFee = formData.payment_type === 'split'
       ? parseFloat(formData.total_fee)
       : parseFloat(formData.amount);
+    const priorPaid = isInstallmentMode && installmentLedger ? installmentLedger.totalPaid : 0;
     const balanceDue = formData.payment_type === 'split'
-      ? Math.max(0, totalFee - parseFloat(formData.amount))
+      ? Math.max(0, totalFee - priorPaid - parseFloat(formData.amount))
       : 0;
 
     const payload = {
@@ -185,13 +198,22 @@ const Income = () => {
         setFormError('Amount Paid cannot exceed Total Course Fee.');
         return;
       }
+      // Validate against remaining balance (excluding current tx being edited)
+      const editLedger = getStudentLedger(formData.student_name, formData.course);
+      const othersPaid = editLedger.totalPaid - parseFloat(currentTx.amount || 0);
+      const remainingForEdit = Math.max(0, parseFloat(formData.total_fee) - othersPaid);
+      if (parseFloat(formData.amount) > remainingForEdit) {
+        setFormError(`Amount cannot exceed remaining balance of ${formatCurrency(remainingForEdit)}.`);
+        return;
+      }
     }
 
     const totalFee = formData.payment_type === 'split'
       ? parseFloat(formData.total_fee)
       : parseFloat(formData.amount);
+    const priorPaidExcludingSelf = getStudentLedger(formData.student_name, formData.course).totalPaid - parseFloat(currentTx.amount || 0);
     const balanceDue = formData.payment_type === 'split'
-      ? Math.max(0, totalFee - parseFloat(formData.amount))
+      ? Math.max(0, totalFee - priorPaidExcludingSelf - parseFloat(formData.amount))
       : 0;
 
     const payload = {
@@ -214,7 +236,9 @@ const Income = () => {
   // Quick-add next installment for a student with outstanding balance
   const handleOpenInstallmentModal = (tx) => {
     const ledger = getStudentLedger(tx.student_name, tx.course);
-    const remainingBalance = ledger.balanceDue;
+    const installmentNumber = ledger.studentTxs.length + 1;
+    setInstallmentLedger(ledger);
+    setIsInstallmentMode(true);
     setFormData({
       date: new Date().toISOString().split('T')[0],
       student_name: tx.student_name || '',
@@ -225,7 +249,7 @@ const Income = () => {
       transaction_id: '',
       whatsapp: tx.whatsapp || '',
       email: tx.email || '',
-      notes: '',
+      notes: `Installment #${installmentNumber}`,
       total_fee: ledger.totalFee.toString(),
       payment_type: 'split'
     });
@@ -505,6 +529,17 @@ const Income = () => {
             </div>
           )}
 
+          {isInstallmentMode && installmentLedger && (
+            <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-xs dark:bg-orange-950/20 dark:border-orange-800">
+              <p className="font-semibold text-orange-700 dark:text-orange-400">
+                \uD83D\uDCCB Recording Installment #{installmentLedger.studentTxs.length + 1} for {formData.student_name}
+              </p>
+              <p className="text-orange-600 dark:text-orange-400 mt-1">
+                Total Fee: {formatCurrency(installmentLedger.totalFee)} · Paid: {formatCurrency(installmentLedger.totalPaid)} · Remaining: {formatCurrency(installmentLedger.balanceDue)}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Date</label>
@@ -546,8 +581,9 @@ const Income = () => {
                 value={formData.student_name}
                 onChange={handleFormChange}
                 placeholder="e.g. Aarav Mehta"
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                className={`w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 ${isInstallmentMode ? 'opacity-60 cursor-not-allowed' : ''}`}
                 required
+                readOnly={isInstallmentMode}
               />
             </div>
           </div>
@@ -562,8 +598,9 @@ const Income = () => {
                 value={formData.course}
                 onChange={handleFormChange}
                 placeholder="e.g. Full Stack Web Development"
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                className={`w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 ${isInstallmentMode ? 'opacity-60 cursor-not-allowed' : ''}`}
                 required
+                readOnly={isInstallmentMode}
               />
             </div>
           </div>
@@ -701,18 +738,23 @@ const Income = () => {
                     type="number"
                     name="total_fee"
                     value={formData.total_fee}
-                    onChange={handleFormChange}
+                    onChange={isInstallmentMode ? undefined : handleFormChange}
                     placeholder="e.g. 50000"
                     step="any"
                     min="0.01"
-                    className="w-full rounded-lg border border-orange-200 bg-orange-50/30 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-orange-400 dark:border-orange-800 dark:bg-orange-950/10 dark:text-slate-200"
+                    className={`w-full rounded-lg border border-orange-200 bg-orange-50/30 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-orange-400 dark:border-orange-800 dark:bg-orange-950/10 dark:text-slate-200 ${isInstallmentMode ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    readOnly={isInstallmentMode}
                   />
                 </div>
-                {formData.total_fee && formData.amount && parseFloat(formData.total_fee) >= parseFloat(formData.amount) && (
-                  <p className="mt-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
-                    Balance after this payment: {formatCurrency(Math.max(0, parseFloat(formData.total_fee) - parseFloat(formData.amount)))}
-                  </p>
-                )}
+                {formData.total_fee && formData.amount && (() => {
+                  const priorPaid = isInstallmentMode && installmentLedger ? installmentLedger.totalPaid : 0;
+                  const remaining = Math.max(0, parseFloat(formData.total_fee) - priorPaid - parseFloat(formData.amount));
+                  return (
+                    <p className="mt-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                      Balance after this payment: {formatCurrency(remaining)}
+                    </p>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -951,11 +993,16 @@ const Income = () => {
                     className="w-full rounded-lg border border-orange-200 bg-orange-50/30 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-orange-400 dark:border-orange-800 dark:bg-orange-950/10 dark:text-slate-200"
                   />
                 </div>
-                {formData.total_fee && formData.amount && parseFloat(formData.total_fee) >= parseFloat(formData.amount) && (
-                  <p className="mt-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
-                    Balance after this payment: {formatCurrency(Math.max(0, parseFloat(formData.total_fee) - parseFloat(formData.amount)))}
-                  </p>
-                )}
+                {formData.total_fee && formData.amount && (() => {
+                  const editLedger = getStudentLedger(formData.student_name, formData.course);
+                  const priorPaidExcludingSelf = editLedger.totalPaid - parseFloat(currentTx?.amount || 0);
+                  const remaining = Math.max(0, parseFloat(formData.total_fee) - priorPaidExcludingSelf - parseFloat(formData.amount));
+                  return (
+                    <p className="mt-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                      Balance after this payment: {formatCurrency(remaining)}
+                    </p>
+                  );
+                })()}
               </div>
             )}
           </div>
