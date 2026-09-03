@@ -5,7 +5,7 @@ import { useCategories } from '../contexts/CategoryContext';
 import { PAYMENT_MODES } from '../utils/mockData';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import Modal from '../components/Modal';
-import { Search, Plus, Edit2, Trash2, Calendar, FileText, ChevronLeft, ChevronRight, User, GraduationCap, DollarSign, CreditCard, Download, Phone, Mail, Share2, AlertCircle, Layers } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Calendar, FileText, ChevronLeft, ChevronRight, User, GraduationCap, DollarSign, CreditCard, Download, Phone, Mail, Share2, AlertCircle, Layers, Hash } from 'lucide-react';
 import { generateBillReceipt } from '../utils/exportUtils';
 import SendBillModal from '../components/SendBillModal';
 
@@ -35,6 +35,7 @@ const Income = () => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     student_name: '',
+    student_id: '',
     course: '',
     category: 'Student Fee',
     amount: '',
@@ -79,6 +80,7 @@ const Income = () => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
       student_name: '',
+      student_id: '',
       course: '',
       category: 'Student Fee',
       amount: '',
@@ -106,6 +108,7 @@ const Income = () => {
     setFormData({
       date: tx.date,
       student_name: tx.student_name || '',
+      student_id: tx.student_id || '',
       course: tx.course || '',
       category: tx.category,
       amount: tx.amount.toString(),
@@ -242,6 +245,7 @@ const Income = () => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
       student_name: tx.student_name || '',
+      student_id: tx.student_id || '',
       course: tx.course || '',
       category: tx.category || 'Student Fee',
       amount: '',
@@ -532,7 +536,7 @@ const Income = () => {
           {isInstallmentMode && installmentLedger && (
             <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-xs dark:bg-orange-950/20 dark:border-orange-800">
               <p className="font-semibold text-orange-700 dark:text-orange-400">
-                \uD83D\uDCCB Recording Installment #{installmentLedger.studentTxs.length + 1} for {formData.student_name}
+                📋 Recording Installment #{installmentLedger.studentTxs.length + 1} for {formData.student_name}
               </p>
               <p className="text-orange-600 dark:text-orange-400 mt-1">
                 Total Fee: {formatCurrency(installmentLedger.totalFee)} · Paid: {formatCurrency(installmentLedger.totalPaid)} · Remaining: {formatCurrency(installmentLedger.balanceDue)}
@@ -571,20 +575,37 @@ const Income = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                name="student_name"
-                value={formData.student_name}
-                onChange={handleFormChange}
-                placeholder="e.g. Aarav Mehta"
-                className={`w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 ${isInstallmentMode ? 'opacity-60 cursor-not-allowed' : ''}`}
-                required
-                readOnly={isInstallmentMode}
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  name="student_name"
+                  value={formData.student_name}
+                  onChange={handleFormChange}
+                  placeholder="e.g. Aarav Mehta"
+                  className={`w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 ${isInstallmentMode ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  required
+                  readOnly={isInstallmentMode}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student ID</label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  name="student_id"
+                  value={formData.student_id}
+                  onChange={handleFormChange}
+                  placeholder="e.g. STU-2024-001"
+                  className={`w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 ${isInstallmentMode ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  readOnly={isInstallmentMode}
+                />
+              </div>
             </div>
           </div>
 
@@ -821,19 +842,35 @@ const Income = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                name="student_name"
-                value={formData.student_name}
-                onChange={handleFormChange}
-                placeholder="e.g. Aarav Mehta"
-                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                required
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  name="student_name"
+                  value={formData.student_name}
+                  onChange={handleFormChange}
+                  placeholder="e.g. Aarav Mehta"
+                  className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Student ID</label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  name="student_id"
+                  value={formData.student_id}
+                  onChange={handleFormChange}
+                  placeholder="e.g. STU-2024-001"
+                  className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                />
+              </div>
             </div>
           </div>
 
