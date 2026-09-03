@@ -140,7 +140,22 @@ _OpenSkools Finance Team_`
   };
 
   // ── Direct PDF download ──────────────────────────────────────────
-  const handleDownload = () => generateBillReceipt(tx);
+  const handleDownload = () => {
+    const splitInfo = ledger ? {
+      totalFee,
+      totalPaid,
+      balanceDue,
+      installments: isSplit
+        ? ledger.studentTxs.map(t => ({
+            receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+            date: t.date,
+            amount: Number(t.amount || 0),
+            payment_mode: t.payment_mode || 'N/A'
+          }))
+        : []
+    } : null;
+    generateBillReceipt(tx, splitInfo);
+  };
 
   // ────────────────────────────────────────────────────────────────
   // Render helpers

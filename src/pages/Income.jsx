@@ -434,7 +434,24 @@ const Income = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center space-x-1.5">
                         <button
-                          onClick={() => generateBillReceipt(tx)}
+                          onClick={() => {
+                            const ledger = getStudentLedger(tx.student_name, tx.course);
+                            const hasSplit = ledger && ledger.studentTxs && ledger.studentTxs.length > 1;
+                            const splitInfo = ledger ? {
+                              totalFee: ledger.totalFee,
+                              totalPaid: ledger.totalPaid,
+                              balanceDue: ledger.balanceDue,
+                              installments: hasSplit
+                                ? ledger.studentTxs.map(t => ({
+                                    receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+                                    date: t.date,
+                                    amount: Number(t.amount || 0),
+                                    payment_mode: t.payment_mode || 'N/A'
+                                  }))
+                                : []
+                            } : null;
+                            generateBillReceipt(tx, splitInfo);
+                          }}
                           className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-emerald-600 dark:hover:bg-slate-800"
                           title="Download Receipt PDF"
                         >
