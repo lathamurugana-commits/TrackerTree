@@ -9,6 +9,12 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) {
+      if (saved === 'dark') document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+      return saved;
+    }
     return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   });
 
@@ -18,9 +24,11 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
     if (theme === 'light') {
       root.classList.add('dark');
       setTheme('dark');
+      localStorage.setItem('theme', 'dark');
     } else {
       root.classList.remove('dark');
       setTheme('light');
+      localStorage.setItem('theme', 'light');
     }
   };
 
