@@ -39,6 +39,7 @@ export const sendReceiptByEmail = async (tx, pdfUrl, ledger = null) => {
         to_name:        tx.student_name || 'Student',
         receipt_no:     receiptNo,
         student_name:   tx.student_name  || 'N/A',
+        student_id:     tx.student_id    || (ledger && ledger.studentId) || 'N/A',
         course:         tx.course        || 'N/A',
         category:       tx.category      || 'N/A',
         payment_mode:   tx.payment_mode  || 'N/A',

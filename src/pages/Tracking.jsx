@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from '../utils/helpers';
 import { generateBillReceipt, generateExpenseVoucher } from '../utils/exportUtils';
 
 const Tracking = () => {
-  const { transactions } = useFinance();
+  const { transactions, getStudentLedger } = useFinance();
   const [searchQuery, setSearchQuery] = useState('');
   const [result, setResult] = useState(null);
   const [searched, setSearched] = useState(false);
@@ -32,7 +32,24 @@ const Tracking = () => {
   const handleDownload = async () => {
     if (!result) return;
     if (result.type === 'income') {
-      generateBillReceipt(result);
+      const ledger = getStudentLedger(result.student_name, result.course);
+      const hasSplit = ledger && ledger.studentTxs && ledger.studentTxs.length > 1;
+      const splitInfo = ledger ? {
+        totalFee: ledger.totalFee,
+        totalPaid: ledger.totalPaid,
+        balanceDue: ledger.balanceDue,
+        studentId: result.student_id || ledger.studentId,
+        installments: hasSplit
+          ? ledger.studentTxs.map(t => ({
+              receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
+              date: t.date,
+              amount: Number(t.amount || 0),
+              payment_mode: t.payment_mode || 'N/A',
+              student_id: t.student_id
+            }))
+          : []
+      } : null;
+      await generateBillReceipt(result, splitInfo);
     } else {
       await generateExpenseVoucher(result);
     }

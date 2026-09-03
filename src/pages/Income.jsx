@@ -441,12 +441,14 @@ const Income = () => {
                               totalFee: ledger.totalFee,
                               totalPaid: ledger.totalPaid,
                               balanceDue: ledger.balanceDue,
+                              studentId: tx.student_id || ledger.studentId,
                               installments: hasSplit
                                 ? ledger.studentTxs.map(t => ({
                                     receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
                                     date: t.date,
                                     amount: Number(t.amount || 0),
-                                    payment_mode: t.payment_mode || 'N/A'
+                                    payment_mode: t.payment_mode || 'N/A',
+                                    student_id: t.student_id
                                   }))
                                 : []
                             } : null;

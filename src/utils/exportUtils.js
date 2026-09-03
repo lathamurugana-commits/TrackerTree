@@ -312,20 +312,23 @@ export const generateBillReceipt = async (tx, splitInfo = null) => {
   // ----------------------------------------------------
   // 4. STUDENT DETAILS
   // ----------------------------------------------------
-  const custY = 86;
+  const custY = 85;
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
   doc.text('Student Details:', 15, custY);
 
+  const resolvedStudentId = tx.student_id || splitInfo?.studentId || (splitInfo?.installments?.find(i => i.student_id)?.student_id) || 'N/A';
+
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text(`Student Name: ${tx.student_name || 'N/A'}`, 15, custY + 6);
-  doc.text(`Course / Batch: ${tx.course || 'N/A'}`, 15, custY + 11);
-  doc.text(`Fee Category: ${tx.category || 'Tuition Fee'}`, 15, custY + 16);
+  doc.text(`Student Name: ${tx.student_name || 'N/A'}`, 15, custY + 5.5);
+  doc.text(`Student ID: ${resolvedStudentId}`, 15, custY + 10.5);
+  doc.text(`Course / Batch: ${tx.course || 'N/A'}`, 15, custY + 15.5);
+  doc.text(`Fee Category: ${tx.category || 'Tuition Fee'}`, 15, custY + 20.5);
   if (tx.transaction_id && tx.transaction_id !== 'N/A') {
-    doc.text(`Transaction Reference: ${tx.transaction_id}`, 15, custY + 21);
+    doc.text(`Transaction Reference: ${tx.transaction_id}`, 15, custY + 25.5);
   }
 
   // ----------------------------------------------------
@@ -627,18 +630,21 @@ export const generateBillReceiptAsBase64 = async (tx, splitInfo = null) => {
   doc.setFont('Helvetica', 'bold');
   doc.text(tx.payment_mode || 'Cash', 165, metaY + 11.5, { align: 'center' });
 
-  const custY = 86;
+  const custY = 85;
   doc.setFont('Helvetica', 'bold'); doc.setFontSize(10);
   doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
   doc.text('Student Details:', 15, custY);
 
+  const resolvedStudentId = tx.student_id || splitInfo?.studentId || (splitInfo?.installments?.find(i => i.student_id)?.student_id) || 'N/A';
+
   doc.setFont('Helvetica', 'normal'); doc.setFontSize(9);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text(`Student Name: ${tx.student_name || 'N/A'}`, 15, custY + 6);
-  doc.text(`Course / Batch: ${tx.course || 'N/A'}`, 15, custY + 11);
-  doc.text(`Fee Category: ${tx.category || 'Tuition Fee'}`, 15, custY + 16);
+  doc.text(`Student Name: ${tx.student_name || 'N/A'}`, 15, custY + 5.5);
+  doc.text(`Student ID: ${resolvedStudentId}`, 15, custY + 10.5);
+  doc.text(`Course / Batch: ${tx.course || 'N/A'}`, 15, custY + 15.5);
+  doc.text(`Fee Category: ${tx.category || 'Tuition Fee'}`, 15, custY + 20.5);
   if (tx.transaction_id && tx.transaction_id !== 'N/A') {
-    doc.text(`Transaction Reference: ${tx.transaction_id}`, 15, custY + 21);
+    doc.text(`Transaction Reference: ${tx.transaction_id}`, 15, custY + 25.5);
   }
 
   const tableY = 116;

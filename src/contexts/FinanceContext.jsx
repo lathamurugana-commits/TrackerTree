@@ -240,8 +240,9 @@ export const FinanceProvider = ({ children }) => {
       : 0;
     const totalPaid = studentTxs.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     const balanceDue = Math.max(0, totalFee - totalPaid);
+    const studentId = studentTxs.find(t => t.student_id)?.student_id || null;
 
-    return { studentTxs, totalFee, totalPaid, balanceDue };
+    return { studentTxs, totalFee, totalPaid, balanceDue, studentId };
   };
 
   return (

@@ -46,12 +46,14 @@ const SendBillModal = ({ tx, ledger, onClose }) => {
         totalFee,
         totalPaid,
         balanceDue,
+        studentId: tx.student_id || ledger.studentId,
         installments: isSplit
           ? ledger.studentTxs.map(t => ({
               receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
               date: t.date,
               amount: Number(t.amount || 0),
-              payment_mode: t.payment_mode || 'N/A'
+              payment_mode: t.payment_mode || 'N/A',
+              student_id: t.student_id
             }))
           : [] // single payment — no installment breakdown table
       } : null;
@@ -121,7 +123,7 @@ Dear *${tx.student_name || 'Student'}*, your payment has been received!
 *Receipt Details*
 | Receipt No   : ${receiptNo}
 | Date         : ${tx.date}
-| Course       : ${tx.course || 'N/A'}
+${(tx.student_id || ledger?.studentId) ? `| Student ID   : ${tx.student_id || ledger?.studentId}\n` : ''}| Course       : ${tx.course || 'N/A'}
 | Category     : ${tx.category || 'N/A'}
 | Payment Mode : ${tx.payment_mode || 'N/A'}
 | *Amount Paid  : Rs. ${amount}*
@@ -145,12 +147,14 @@ _OpenSkools Finance Team_`
       totalFee,
       totalPaid,
       balanceDue,
+      studentId: tx.student_id || ledger.studentId,
       installments: isSplit
         ? ledger.studentTxs.map(t => ({
             receipt_no: t.receipt_no || `REC-${(t.id || '').replace('tx-', '')}`,
             date: t.date,
             amount: Number(t.amount || 0),
-            payment_mode: t.payment_mode || 'N/A'
+            payment_mode: t.payment_mode || 'N/A',
+            student_id: t.student_id
           }))
         : []
     } : null;
