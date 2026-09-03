@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import { User, Mail, Phone, Shield, Camera, Save, CheckCircle, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
 
 const Profile = () => {
-  const { user, role } = useAuth();
+  const { user, role, refreshProfile } = useAuth();
 
   // Profile form
   const [profile, setProfile] = useState({
@@ -72,15 +72,15 @@ const Profile = () => {
     setProfileMsg({ type: '', text: '' });
 
     try {
-      // Upsert to profiles table
+      // Update profiles table
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
+        .update({
           full_name: profile.full_name.trim(),
           phone: profile.phone.trim(),
           avatar_url: profile.avatar_url.trim(),
-        }, { onConflict: 'id' });
+        })
+        .eq('id', user.id);
 
       if (error) throw error;
 
@@ -88,6 +88,9 @@ const Profile = () => {
       await supabase.auth.updateUser({
         data: { full_name: profile.full_name.trim() }
       });
+
+      // Refresh the global profile state so Navbar updates immediately
+      await refreshProfile();
 
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => setProfileMsg({ type: '', text: '' }), 4000);

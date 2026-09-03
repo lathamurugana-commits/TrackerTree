@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Track Supabase Auth State
@@ -19,9 +20,11 @@ export const AuthProvider = ({ children }) => {
         if (session?.user) {
           setUser(session.user);
           await fetchSupabaseRole(session.user.id, session.user.email);
+          await fetchProfile(session.user.id);
         } else {
           setUser(null);
           setRole(null);
+          setProfile(null);
         }
       } catch (err) {
         console.error('Supabase auth session fetch error:', err);
@@ -36,9 +39,11 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         setUser(session.user);
         await fetchSupabaseRole(session.user.id, session.user.email);
+        await fetchProfile(session.user.id);
       } else {
         setUser(null);
         setRole(null);
+        setProfile(null);
       }
       setLoading(false);
     });
@@ -75,6 +80,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Fetch full profile data
+  const fetchProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, phone, avatar_url')
+        .eq('id', userId)
+        .single();
+      if (data && !error) {
+        setProfile(data);
+      }
+    } catch {
+      // silently fail
+    }
+  };
+
+  // Refresh profile (called after profile edits)
+  const refreshProfile = async () => {
+    if (user?.id) await fetchProfile(user.id);
+  };
+
   // Sign In
   const login = async (email, password) => {
     setLoading(true);
@@ -103,6 +129,7 @@ export const AuthProvider = ({ children }) => {
       await supabase.auth.signOut();
       setUser(null);
       setRole(null);
+      setProfile(null);
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
@@ -111,7 +138,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, profile, loading, login, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

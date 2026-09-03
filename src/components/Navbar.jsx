@@ -5,7 +5,7 @@ import { useFinance } from '../contexts/FinanceContext';
 import { Sun, Moon, Bell, LogOut, User, Menu, Settings } from 'lucide-react';
 
 const Navbar = ({ onMenuClick, currentTitle }) => {
-  const { user, role, logout } = useAuth();
+  const { user, role, profile, logout } = useAuth();
   const { transactions } = useFinance();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -140,7 +140,7 @@ const Navbar = ({ onMenuClick, currentTitle }) => {
             </div>
             <div className="hidden text-left md:block">
               <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                {user?.name || user?.email?.split('@')[0] || 'Member'}
+                {profile?.full_name || user?.email?.split('@')[0] || 'Member'}
               </p>
               <p className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">
                 {role || 'User'}
