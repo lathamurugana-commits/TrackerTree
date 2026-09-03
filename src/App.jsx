@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { FinanceProvider } from './contexts/FinanceContext';
@@ -13,6 +13,7 @@ import Expense from './pages/Expense';
 import Reports from './pages/Reports';
 import Categories from './pages/Categories';
 import Tracking from './pages/Tracking';
+import SplashScreen from './components/SplashScreen';
 
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -54,7 +55,12 @@ const DashboardLayout = ({ children }) => {
 };
 
 const App = () => {
+  const [showSplash, setShowSplash] = useState(true);
+  const handleSplashFinished = useCallback(() => setShowSplash(false), []);
+
   return (
+    <>
+      {showSplash && <SplashScreen onFinished={handleSplashFinished} />}
     <Router>
       <AuthProvider>
         <FinanceProvider>
@@ -129,6 +135,7 @@ const App = () => {
         </FinanceProvider>
       </AuthProvider>
     </Router>
+    </>
   );
 };
 
